@@ -1,0 +1,35 @@
+plugins { id 'com.android.application' }
+
+android {
+    signingConfigs {
+        release {
+            def ks = System.getenv('BUTDETAL_KEYSTORE_PATH')
+            if (ks != null) {
+                storeFile file(ks)
+                storePassword System.getenv('BUTDETAL_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('BUTDETAL_KEY_ALIAS')
+                keyPassword System.getenv('BUTDETAL_KEY_PASSWORD')
+            }
+        }
+    }
+    namespace 'ua.budivelnyk.ua'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'ua.budivelnyk.ua'
+        minSdk 23
+        targetSdk 35
+        versionCode 12
+        versionName '2.0.8'
+    }
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+        }
+    }
+}
+
+dependencies {
+    implementation 'com.rmtheis:tess-two:9.1.0'
+    implementation 'androidx.core:core:1.15.0'
+}

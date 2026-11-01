@@ -1,0 +1,496 @@
+package ua.budivelnyk.ua;
+
+import android.app.Activity;
+import android.content.Intent;
+import android.content.ClipData;
+import android.net.Uri;
+import android.os.Bundle;
+import android.os.Environment;
+import android.os.ParcelFileDescriptor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
+import android.graphics.pdf.PdfRenderer;
+import android.util.Base64;
+import android.webkit.JavascriptInterface;
+import android.webkit.ValueCallback;
+import android.webkit.WebChromeClient;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+
+import androidx.core.content.FileProvider;
+
+import com.googlecode.tesseract.android.TessBaseAPI;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
+import java.util.*;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
+import java.security.KeyStore;
+import javax.crypto.Cipher;
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.GCMParameterSpec;
+import android.security.keystore.KeyGenParameterSpec;
+import android.security.keystore.KeyProperties;
+import android.content.SharedPreferences;
+import android.app.DownloadManager;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.IntentFilter;
+import android.content.pm.PackageInfo;
+import android.os.Build;
+import android.provider.Settings;
+import android.content.pm.PackageManager;
+
+public class MainActivity extends Activity {
+    private static final int PICK=1401;
+    private static final int BACKUP_EXPORT=1402;
+    private static final int BACKUP_IMPORT=1403;
+    private String pendingBackupJson="{}";
+    private StringBuilder backupJsonBuilder=new StringBuilder();
+    private int nextBackupChunk=0;
+    private ValueCallback<Uri[]> callback;
+    private WebView webView;
+    private DownloadManager downloadManager;
+    private long updateDownloadId=-1;
+    private BroadcastReceiver updateReceiver;
+
+    private File folder(String category) {
+        File root=getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+        if(root==null) root=getFilesDir();
+        File dir=new File(root,"drawings".equals(category)?"Креслення":"Фото_виробів");
+        if(!dir.exists()) dir.mkdirs();
+        return dir;
+    }
+    private File pdfFolder() {
+        File root=getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS);
+        if(root==null) root=getFilesDir();
+        File dir=new File(root,"BUTDETAL_PDF");
+        if(!dir.exists()) dir.mkdirs();
+        return dir;
+    }
+    private static byte[] decodeData(String data) {
+        int comma=data.indexOf(',');
+        return Base64.decode(comma>=0?data.substring(comma+1):data,Base64.DEFAULT);
+    }
+    private static byte[] bytes(File f)throws Exception {
+        try(FileInputStream in=new FileInputStream(f);ByteArrayOutputStream out=new ByteArrayOutputStream()){
+            byte[] b=new byte[8192]; int n;
+            while((n=in.read(b))>0) out.write(b,0,n);
+            return out.toByteArray();
+        }
+    }
+    private static String read(File f)throws Exception {
+        return new String(bytes(f),StandardCharsets.UTF_8);
+    }
+    private static String safeName(String n) {
+        String s=n==null?"file":n.replaceAll("[^a-zA-Z0-9а-яА-ЯіІїЇєЄ._-]","_");
+        return s.length()>100?s.substring(0,100):s;
+    }
+
+    private File ensureTessdata() throws Exception {
+        File base=new File(getFilesDir(),"tesseract");
+        File data=new File(base,"tessdata");
+        if(!data.exists()&&!data.mkdirs()) throw new IOException("Не вдалося створити папку tessdata");
+        for(String lang:new String[]{"ukr","rus","eng"}) {
+            File target=new File(data,lang+".traineddata");
+            if(!target.exists() || target.length()<100000) {
+                try(InputStream in=getAssets().open("tessdata/"+lang+".traineddata");
+                    OutputStream out=new FileOutputStream(target)) {
+                    byte[] b=new byte[8192]; int n;
+                    while((n=in.read(b))>0) out.write(b,0,n);
+                }
+            }
+            if(!target.exists() || target.length()<100000)
+                throw new IOException("Мовний файл пошкоджений: "+lang);
+        }
+        return base;
+    }
+
+    private String recognizeBitmap(Bitmap bitmap) throws Exception {
+        File base=ensureTessdata();
+        TessBaseAPI api=new TessBaseAPI();
+        boolean initialized=false;
+        try {
+            initialized=api.init(base.getAbsolutePath(),"ukr+rus+eng");
+            if(!initialized) throw new IOException("Tesseract не зміг завантажити ukr/rus/eng");
+            api.setPageSegMode(TessBaseAPI.PageSegMode.PSM_AUTO);
+            api.setImage(bitmap);
+            String result=api.getUTF8Text();
+            return result==null?"":result.trim();
+        } finally {
+            if(initialized) { api.clear(); api.end(); }
+        }
+    }
+
+    private static final String CREDENTIAL_ALIAS = "butdetal_credential_key_v1";
+    private SecretKey credentialKey() throws Exception {
+        KeyStore ks=KeyStore.getInstance("AndroidKeyStore"); ks.load(null);
+        if(ks.containsAlias(CREDENTIAL_ALIAS)) return ((KeyStore.SecretKeyEntry)ks.getEntry(CREDENTIAL_ALIAS,null)).getSecretKey();
+        KeyGenerator kg=KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES,"AndroidKeyStore");
+        kg.init(new KeyGenParameterSpec.Builder(CREDENTIAL_ALIAS,KeyProperties.PURPOSE_ENCRYPT|KeyProperties.PURPOSE_DECRYPT)
+            .setBlockModes(KeyProperties.BLOCK_MODE_GCM).setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE).setRandomizedEncryptionRequired(true).build());
+        return kg.generateKey();
+    }
+    private String encryptCredential(String plain) throws Exception {
+        Cipher c=Cipher.getInstance("AES/GCM/NoPadding"); c.init(Cipher.ENCRYPT_MODE,credentialKey());
+        byte[] enc=c.doFinal(plain.getBytes(StandardCharsets.UTF_8));
+        byte[] iv=c.getIV(), all=new byte[iv.length+enc.length]; System.arraycopy(iv,0,all,0,iv.length);System.arraycopy(enc,0,all,iv.length,enc.length);
+        return Base64.encodeToString(all,Base64.NO_WRAP);
+    }
+    private String decryptCredential(String stored) throws Exception {
+        byte[] all=Base64.decode(stored,Base64.DEFAULT); if(all.length<13) return "";
+        byte[] iv=Arrays.copyOfRange(all,0,12), enc=Arrays.copyOfRange(all,12,all.length);
+        Cipher c=Cipher.getInstance("AES/GCM/NoPadding");c.init(Cipher.DECRYPT_MODE,credentialKey(),new GCMParameterSpec(128,iv));
+        return new String(c.doFinal(enc),StandardCharsets.UTF_8);
+    }
+
+    public class AndroidStorage {
+        @JavascriptInterface public String saveCredential(String email,String password) {
+            try { JSONObject o=new JSONObject();o.put("email",email);o.put("password",password);
+                getSharedPreferences("butdetal_secure_v1",MODE_PRIVATE).edit().putString("credential",encryptCredential(o.toString())).apply();return "OK";
+            } catch(Exception e){return "Помилка захищеного збереження: "+e.getMessage();}
+        }
+        @JavascriptInterface public String getCredential() {
+            try {String v=getSharedPreferences("butdetal_secure_v1",MODE_PRIVATE).getString("credential",null);return v==null?"":decryptCredential(v);}
+            catch(Exception e){return "";}
+        }
+        @JavascriptInterface public String clearCredential() {
+            getSharedPreferences("butdetal_secure_v1",MODE_PRIVATE).edit().remove("credential").apply();return "OK";
+        }
+        @JavascriptInterface public String saveDocument(String name,String mime,String base64) {
+            try {
+                File root=getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS);if(root==null)root=new File(getFilesDir(),"Documents");
+                File dir=new File(root,"BUTDETAL_Експорт");if(!dir.exists()&&!dir.mkdirs())throw new IOException("Не вдалося створити папку експорту");
+                File f=new File(dir,safeName(name));try(FileOutputStream out=new FileOutputStream(f)){out.write(Base64.decode(base64,Base64.DEFAULT));}
+                return "OK";
+            }catch(Exception e){return "Помилка експорту: "+e.getMessage();}
+        }
+        @JavascriptInterface public String saveImage(String c,String name,String data,String title,String notes,String date) {
+            try {
+                byte[] raw=decodeData(data);
+                String safe=safeName(name);
+                File dir=folder(c),f=new File(dir,safe);
+                try(FileOutputStream out=new FileOutputStream(f)){out.write(raw);}
+                JSONObject meta=new JSONObject();
+                meta.put("title",title);meta.put("notes",notes);meta.put("date",date);meta.put("fileName",safe);
+                try(FileOutputStream out=new FileOutputStream(new File(dir,safe+".json"))){out.write(meta.toString().getBytes(StandardCharsets.UTF_8));}
+                return "OK";
+            } catch(Exception e){return "Помилка збереження: "+e.getMessage();}
+        }
+        @JavascriptInterface public String listImages(String c) {
+            JSONArray arr=new JSONArray(); File[] files=folder(c).listFiles((d,n)->n.toLowerCase(Locale.ROOT).endsWith(".jpg"));
+            if(files==null)return arr.toString();
+            Arrays.sort(files,(a,b)->Long.compare(b.lastModified(),a.lastModified()));
+            for(File f:files)try{
+                File mf=new File(f.getParentFile(),f.getName()+".json");
+                JSONObject o=mf.exists()?new JSONObject(read(mf)):new JSONObject();
+                o.put("fileName",f.getName());
+                o.put("dataUrl","data:image/jpeg;base64,"+Base64.encodeToString(bytes(f),Base64.NO_WRAP));
+                arr.put(o);
+            }catch(Exception ignored){}
+            return arr.toString();
+        }
+        @JavascriptInterface public String deleteImage(String c,String n) {
+            try{
+                String safe=safeName(n);File dir=folder(c),f=new File(dir,safe),m=new File(dir,safe+".json");
+                if(f.exists()&&!f.delete())return "Не вдалося видалити";
+                if(m.exists())m.delete();return "OK";
+            }catch(Exception e){return "Помилка: "+e.getMessage();}
+        }
+        @JavascriptInterface public String recognizeImage(String data,String languages) {
+            Bitmap bitmap=null;
+            try {
+                byte[] raw=decodeData(data);
+                bitmap=BitmapFactory.decodeByteArray(raw,0,raw.length);
+                if(bitmap==null)return "Помилка OCR: не вдалося декодувати зображення.";
+                String text=recognizeBitmap(bitmap);
+                return text.isEmpty()?"Текст не знайдено. Перевір якість та контрастність фото.":text;
+            } catch(UnsatisfiedLinkError e){return "OCR не запустився: не завантажилася нативна бібліотека Tesseract ("+e.getMessage()+").";}
+              catch(Exception e){return "Помилка OCR: "+e.getMessage();}
+            finally {if(bitmap!=null&&!bitmap.isRecycled())bitmap.recycle();}
+        }
+        @JavascriptInterface public String recognizePdf(String data,String languages) {
+            File tmp=null; ParcelFileDescriptor pfd=null; PdfRenderer renderer=null;
+            StringBuilder result=new StringBuilder();
+            try {
+                byte[] raw=decodeData(data);
+                tmp=File.createTempFile("butdetal_ocr_",".pdf",getCacheDir());
+                try(FileOutputStream out=new FileOutputStream(tmp)){out.write(raw);}
+                pfd=ParcelFileDescriptor.open(tmp,ParcelFileDescriptor.MODE_READ_ONLY);
+                renderer=new PdfRenderer(pfd);
+                int count=Math.min(renderer.getPageCount(),40);
+                if(count==0)return "OCR: PDF не містить сторінок.";
+                for(int i=0;i<count;i++){
+                    PdfRenderer.Page page=renderer.openPage(i);
+                    Bitmap bmp=null;
+                    try{
+                        float scale=Math.min(2.0f,2200.0f/Math.max(page.getWidth(),page.getHeight()));
+                        int w=Math.max(1,(int)(page.getWidth()*scale));
+                        int h=Math.max(1,(int)(page.getHeight()*scale));
+                        bmp=Bitmap.createBitmap(w,h,Bitmap.Config.ARGB_8888);
+                        bmp.eraseColor(android.graphics.Color.WHITE);
+                        page.render(bmp,null,null,PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
+                        String text=recognizeBitmap(bmp);
+                        result.append("\\n--- Сторінка ").append(i+1).append(" ---\\n");
+                        result.append(text.isEmpty()?"Текст не знайдено на цій сторінці.":text).append("\\n");
+                    } finally {
+                        if(bmp!=null&&!bmp.isRecycled())bmp.recycle();
+                        page.close();
+                    }
+                }
+                if(renderer.getPageCount()>count)result.append("\\nOCR: оброблено перші ").append(count).append(" сторінок із ").append(renderer.getPageCount()).append(".");
+                return result.toString().trim();
+            } catch(UnsatisfiedLinkError e){return "OCR не запустився: не завантажилася нативна бібліотека Tesseract ("+e.getMessage()+").";}
+              catch(Exception e){return "Помилка OCR PDF: "+e.getMessage();}
+            finally {
+                try{if(renderer!=null)renderer.close();}catch(Exception ignored){}
+                try{if(pfd!=null)pfd.close();}catch(Exception ignored){}
+                if(tmp!=null)tmp.delete();
+            }
+        }
+        @JavascriptInterface public String savePdf(String name,String data,String title,String notes) {
+            try{
+                String safe=safeName(name);
+                if(!safe.toLowerCase(Locale.ROOT).endsWith(".pdf"))safe+=".pdf";
+                File f=new File(pdfFolder(),System.currentTimeMillis()+"_"+safe);
+                try(FileOutputStream out=new FileOutputStream(f)){out.write(decodeData(data));}
+                JSONObject meta=new JSONObject();meta.put("fileName",f.getName());meta.put("title",title);meta.put("notes",notes);
+                meta.put("date",new SimpleDateFormat("dd.MM.yyyy HH:mm",Locale.getDefault()).format(new Date()));
+                try(FileOutputStream out=new FileOutputStream(new File(pdfFolder(),f.getName()+".json"))){out.write(meta.toString().getBytes(StandardCharsets.UTF_8));}
+                return "OK";
+            }catch(Exception e){return "Помилка збереження PDF: "+e.getMessage();}
+        }
+        @JavascriptInterface public String listPdfs() {
+            JSONArray arr=new JSONArray();File[] fs=pdfFolder().listFiles((d,n)->n.toLowerCase(Locale.ROOT).endsWith(".pdf"));
+            if(fs==null)return arr.toString();Arrays.sort(fs,(a,b)->Long.compare(b.lastModified(),a.lastModified()));
+            for(File f:fs)try{
+                File mf=new File(pdfFolder(),f.getName()+".json");JSONObject o=mf.exists()?new JSONObject(read(mf)):new JSONObject();
+                o.put("fileName",f.getName());o.put("size",f.length());arr.put(o);
+            }catch(Exception ignored){}
+            return arr.toString();
+        }
+        @JavascriptInterface public String readPdfBase64(String name) {
+            try { File f=new File(pdfFolder(),safeName(name)); if(!f.exists())return ""; return Base64.encodeToString(bytes(f),Base64.NO_WRAP); }
+            catch(Exception e){ return ""; }
+        }
+        @JavascriptInterface public String importPdf(String name,String base64,String title,String notes,String date) {
+            try {
+                String safe=safeName(name); if(!safe.toLowerCase(Locale.ROOT).endsWith(".pdf"))safe+=".pdf";
+                File f=new File(pdfFolder(),safe); if(f.exists())return "EXISTS";
+                try(FileOutputStream out=new FileOutputStream(f)){out.write(Base64.decode(base64,Base64.DEFAULT));}
+                JSONObject meta=new JSONObject();meta.put("fileName",safe);meta.put("title",title);meta.put("notes",notes);meta.put("date",date);
+                try(FileOutputStream out=new FileOutputStream(new File(pdfFolder(),safe+".json"))){out.write(meta.toString().getBytes(StandardCharsets.UTF_8));}
+                return "OK";
+            } catch(Exception e){return "Помилка імпорту PDF: "+e.getMessage();}
+        }
+        @JavascriptInterface public String deletePdf(String name) {
+            try{String n=safeName(name);File f=new File(pdfFolder(),n),m=new File(pdfFolder(),n+".json");
+                if(f.exists()&&!f.delete())return "Не вдалося видалити PDF";if(m.exists())m.delete();return "OK";
+            }catch(Exception e){return "Помилка: "+e.getMessage();}
+        }
+        @JavascriptInterface public String openPdf(String name) {
+            try{
+                File f=new File(pdfFolder(),safeName(name));
+                if(!f.exists())return "Файл не знайдено.";
+                Uri uri=FileProvider.getUriForFile(MainActivity.this,getPackageName()+".provider",f);
+                Intent i=new Intent(Intent.ACTION_VIEW);i.setDataAndType(uri,"application/pdf");
+                i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);startActivity(i);return "OK";
+            }catch(Exception e){return "Не вдалося відкрити PDF: "+e.getMessage();}
+        }
+        @JavascriptInterface public String beginBackup() {
+            backupJsonBuilder.setLength(0); nextBackupChunk=0; return "OK";
+        }
+        @JavascriptInterface public String appendBackupChunk(int index, String chunk) {
+            if(index!=nextBackupChunk) return "Помилка порядку частин резервної копії";
+            if(chunk==null || chunk.length()>60000) return "Завелика частина резервної копії";
+            backupJsonBuilder.append(chunk); nextBackupChunk++; return "OK";
+        }
+        @JavascriptInterface public String finishBackup() {
+            try {
+                pendingBackupJson=backupJsonBuilder.length()==0?"{}":backupJsonBuilder.toString();
+                new JSONObject(pendingBackupJson);
+                Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT); i.addCategory(Intent.CATEGORY_OPENABLE); i.setType("application/zip");
+                i.putExtra(Intent.EXTRA_TITLE,"BUTDETAL-backup-"+new SimpleDateFormat("yyyyMMdd-HHmm",Locale.US).format(new Date())+".zip");
+                startActivityForResult(i,BACKUP_EXPORT); return "BACKUP_EXPORT_STARTED";
+            } catch(Exception e) { return "Помилка створення резервної копії: "+e.getMessage(); }
+        }
+        @JavascriptInterface public String exportBackup(String appData) {
+            try {
+                pendingBackupJson = appData == null ? "{}" : appData;
+                Intent i = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+                i.addCategory(Intent.CATEGORY_OPENABLE);
+                i.setType("application/zip");
+                i.putExtra(Intent.EXTRA_TITLE, "BUTDETAL-backup-" + new SimpleDateFormat("yyyyMMdd-HHmm", Locale.US).format(new Date()) + ".zip");
+                startActivityForResult(i, BACKUP_EXPORT);
+                return "BACKUP_EXPORT_STARTED";
+            } catch(Exception e) { return "Помилка створення резервної копії: " + e.getMessage(); }
+        }
+        @JavascriptInterface public String importBackup() {
+            try {
+                Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                i.addCategory(Intent.CATEGORY_OPENABLE);
+                i.setType("application/zip");
+                startActivityForResult(i, BACKUP_IMPORT);
+                return "BACKUP_IMPORT_STARTED";
+            } catch(Exception e) { return "Помилка вибору резервної копії: " + e.getMessage(); }
+        }
+        private void writeBackup(Uri uri, String appData) throws Exception {
+            try(OutputStream raw=getContentResolver().openOutputStream(uri); ZipOutputStream zip=new ZipOutputStream(raw)) {
+                putZipText(zip, "app-data.json", appData == null ? "{}" : appData);
+                addDirectoryToZip(zip, folder("drawings"), "drawings/");
+                addDirectoryToZip(zip, folder("products"), "products/");
+                addDirectoryToZip(zip, pdfFolder(), "pdf/");
+            }
+        }
+        private void putZipText(ZipOutputStream zip, String name, String value) throws Exception {
+            zip.putNextEntry(new ZipEntry(name)); zip.write(value.getBytes(StandardCharsets.UTF_8)); zip.closeEntry();
+        }
+        private void addDirectoryToZip(ZipOutputStream zip, File dir, String prefix) throws Exception {
+            File[] files=dir.listFiles(); if(files==null)return;
+            for(File f:files) if(f.isFile() && !f.getName().contains("..")) {
+                zip.putNextEntry(new ZipEntry(prefix + safeName(f.getName())));
+                try(InputStream in=new FileInputStream(f)){byte[] b=new byte[8192];int n;while((n=in.read(b))>0)zip.write(b,0,n);}
+                zip.closeEntry();
+            }
+        }
+        private JSONObject readBackup(Uri uri) throws Exception {
+            JSONObject appData=new JSONObject(); boolean found=false;
+            try(InputStream raw=getContentResolver().openInputStream(uri); ZipInputStream zip=new ZipInputStream(raw)) {
+                ZipEntry e; byte[] buf=new byte[8192];
+                while((e=zip.getNextEntry())!=null) {
+                    String name=e.getName();
+                    if(e.isDirectory() || name.startsWith("/") || name.contains("..") || name.contains("\\")) { zip.closeEntry(); continue; }
+                    if(name.equals("app-data.json")) {
+                        ByteArrayOutputStream out=new ByteArrayOutputStream();int n;while((n=zip.read(buf))>0)out.write(buf,0,n);
+                        appData=new JSONObject(new String(out.toByteArray(),StandardCharsets.UTF_8)); found=true;
+                    } else {
+                        File target=null; String fileName=null;
+                        if(name.startsWith("drawings/")){target=folder("drawings");fileName=name.substring(9);}
+                        else if(name.startsWith("products/")){target=folder("products");fileName=name.substring(9);}
+                        else if(name.startsWith("pdf/")){target=pdfFolder();fileName=name.substring(4);}
+                        if(target!=null && fileName!=null && !fileName.isEmpty() && fileName.equals(safeName(fileName))) {
+                            File outFile=new File(target,fileName);
+                            try(FileOutputStream out=new FileOutputStream(outFile)){int n;while((n=zip.read(buf))>0)out.write(buf,0,n);}
+                        }
+                    }
+                    zip.closeEntry();
+                }
+            }
+            if(!found) throw new IOException("У ZIP немає даних BUTDETAL або файл пошкоджений");
+            return appData;
+        }
+
+        @JavascriptInterface public String getAppVersion() {
+            try { PackageInfo p=getPackageManager().getPackageInfo(getPackageName(),0); return p.versionName==null?"0":p.versionName; }
+            catch(Exception e){ return "0"; }
+        }
+        @JavascriptInterface public String downloadAndInstall(String url) {
+            try {
+                if(url==null || !url.startsWith("https://github.com/")) return "Неприпустиме посилання на оновлення.";
+                if(Build.VERSION.SDK_INT>=26 && !getPackageManager().canRequestPackageInstalls()) {
+                    Intent settings=new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,Uri.parse("package:"+getPackageName()));
+                    startActivity(settings); return "ДОЗВІЛ_ПОТРІБЕН";
+                }
+                if(downloadManager==null) downloadManager=(DownloadManager)getSystemService(DOWNLOAD_SERVICE);
+                DownloadManager.Request request=new DownloadManager.Request(Uri.parse(url));
+                request.setTitle("Оновлення BUTDETAL");
+                request.setDescription("Завантаження нової версії застосунку");
+                request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+                request.setAllowedOverMetered(true); request.setAllowedOverRoaming(false);
+                request.setDestinationInExternalFilesDir(MainActivity.this,Environment.DIRECTORY_DOWNLOADS,"BUTDETAL-update.apk");
+                updateDownloadId=downloadManager.enqueue(request);
+                return "ЗАВАНТАЖЕННЯ_ПОЧАТО";
+            } catch(Exception e) { return "Помилка оновлення: "+e.getMessage(); }
+        }
+    }
+
+    @Override public void onCreate(Bundle b) {
+        super.onCreate(b);
+        webView=new WebView(this);webView.setWebViewClient(new WebViewClient());
+        webView.setWebChromeClient(new WebChromeClient(){
+            @Override public boolean onShowFileChooser(WebView v,ValueCallback<Uri[]> cb,FileChooserParams p){
+                if(callback!=null)callback.onReceiveValue(null);callback=cb;
+                try{startActivityForResult(p.createIntent(),PICK);}
+                catch(Exception e){callback=null;cb.onReceiveValue(null);return false;}return true;
+            }
+        });
+        WebSettings s=webView.getSettings();s.setJavaScriptEnabled(true);s.setDomStorageEnabled(true);
+        s.setAllowFileAccess(true);s.setAllowContentAccess(true);
+        webView.addJavascriptInterface(new AndroidStorage(),"AndroidStorage");
+        webView.setBackgroundColor(0xFF0B1420);setContentView(webView);
+        folder("drawings");folder("products");pdfFolder();
+        downloadManager=(DownloadManager)getSystemService(DOWNLOAD_SERVICE);
+        updateReceiver=new BroadcastReceiver(){
+            @Override public void onReceive(Context context,Intent intent){
+                if(!DownloadManager.ACTION_DOWNLOAD_COMPLETE.equals(intent.getAction())) return;
+                long id=intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID,-1);
+                if(id!=updateDownloadId) return;
+                DownloadManager.Query q=new DownloadManager.Query().setFilterById(id);
+                try(android.database.Cursor c=downloadManager.query(q)){
+                    if(c!=null && c.moveToFirst()){
+                        int status=c.getInt(c.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS));
+                        if(status==DownloadManager.STATUS_SUCCESSFUL) installDownloadedUpdate();
+                        else if(webView!=null) webView.evaluateJavascript("window.onNativeUpdateResult&&window.onNativeUpdateResult('Помилка завантаження APK')",null);
+                    }
+                }catch(Exception e){ if(webView!=null)webView.evaluateJavascript("window.onNativeUpdateResult&&window.onNativeUpdateResult('Помилка перевірки завантаження')",null); }
+            }
+        };
+        IntentFilter filter=new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE);
+        if(Build.VERSION.SDK_INT>=33) registerReceiver(updateReceiver,filter,Context.RECEIVER_NOT_EXPORTED); else registerReceiver(updateReceiver,filter);
+        webView.loadUrl("file:///android_asset/index.html");
+    }
+    private void installDownloadedUpdate(){
+        try{
+            File f=new File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),"BUTDETAL-update.apk");
+            if(!f.exists() || f.length()<100000) throw new IOException("Завантажений APK відсутній або пошкоджений");
+            Uri uri=FileProvider.getUriForFile(this,getPackageName()+".provider",f);
+            Intent i=new Intent(Intent.ACTION_VIEW); i.setDataAndType(uri,"application/vnd.android.package-archive");
+            i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION|Intent.FLAG_ACTIVITY_NEW_TASK); startActivity(i);
+        }catch(Exception e){ if(webView!=null)webView.evaluateJavascript("window.onNativeUpdateResult&&window.onNativeUpdateResult("+JSONObject.quote("Не вдалося відкрити інсталятор: "+e.getMessage())+")",null); }
+    }
+    @Override protected void onDestroy(){
+        if(updateReceiver!=null){try{unregisterReceiver(updateReceiver);}catch(Exception ignored){}}
+        super.onDestroy();
+    }
+    @Override protected void onActivityResult(int r,int c,Intent d) {
+        super.onActivityResult(r,c,d);
+        if(r==BACKUP_EXPORT) {
+            if(c==RESULT_OK && d!=null && d.getData()!=null) {
+                try { writeBackup(d.getData(), pendingBackupJson); notifyBackup("Експорт резервної копії завершено.", true); }
+                catch(Exception e) { notifyBackup("Помилка створення копії: "+e.getMessage(), false); }
+            } else notifyBackup("Створення резервної копії скасовано.", false);
+            return;
+        }
+        if(r==BACKUP_IMPORT) {
+            if(c==RESULT_OK && d!=null && d.getData()!=null) {
+                try { JSONObject data=readBackup(d.getData()); notifyRestore(data); }
+                catch(Exception e) { notifyBackup("Не вдалося відновити копію: "+e.getMessage(), false); }
+            } else notifyBackup("Відновлення скасовано.", false);
+            return;
+        }
+        if(r==PICK&&callback!=null){
+            Uri[] u=null;
+            if(c==RESULT_OK&&d!=null){
+                if(d.getClipData()!=null){ClipData clip=d.getClipData();u=new Uri[clip.getItemCount()];
+                    for(int i=0;i<clip.getItemCount();i++)u[i]=clip.getItemAt(i).getUri();}
+                else if(d.getData()!=null)u=new Uri[]{d.getData()};
+            }
+            callback.onReceiveValue(u);callback=null;
+        }
+    }
+    private void notifyBackup(String message, boolean success) {
+        if(webView!=null) webView.post(()->webView.evaluateJavascript("window.onNativeBackupResult&&window.onNativeBackupResult("+JSONObject.quote(message)+","+success+")",null));
+    }
+    private void notifyRestore(JSONObject data) {
+        if(webView!=null) webView.post(()->webView.evaluateJavascript("window.onNativeBackupRestore&&window.onNativeBackupRestore("+JSONObject.quote(data.toString())+")",null));
+    }
+}
