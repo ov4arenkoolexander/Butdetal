@@ -55,6 +55,7 @@ public class MainActivity extends Activity {
     private static final int BACKUP_EXPORT=1402;
     private static final int BACKUP_IMPORT=1403;
     private String pendingBackupJson="{}";
+    private AndroidStorage androidStorage;
     private StringBuilder backupJsonBuilder=new StringBuilder();
     private int nextBackupChunk=0;
     private ValueCallback<Uri[]> callback;
@@ -425,7 +426,8 @@ public class MainActivity extends Activity {
         });
         WebSettings s=webView.getSettings();s.setJavaScriptEnabled(true);s.setDomStorageEnabled(true);
         s.setAllowFileAccess(true);s.setAllowContentAccess(true);
-        webView.addJavascriptInterface(new AndroidStorage(),"AndroidStorage");
+        androidStorage=new AndroidStorage();
+        webView.addJavascriptInterface(androidStorage,"AndroidStorage");
         webView.setBackgroundColor(0xFF0B1420);setContentView(webView);
         folder("drawings");folder("products");pdfFolder();
         downloadManager=(DownloadManager)getSystemService(DOWNLOAD_SERVICE);
@@ -465,14 +467,14 @@ public class MainActivity extends Activity {
         super.onActivityResult(r,c,d);
         if(r==BACKUP_EXPORT) {
             if(c==RESULT_OK && d!=null && d.getData()!=null) {
-                try { writeBackup(d.getData(), pendingBackupJson); notifyBackup("Експорт резервної копії завершено.", true); }
+                try { androidStorage.writeBackup(d.getData(), pendingBackupJson); notifyBackup("Експорт резервної копії завершено.", true); }
                 catch(Exception e) { notifyBackup("Помилка створення копії: "+e.getMessage(), false); }
             } else notifyBackup("Створення резервної копії скасовано.", false);
             return;
         }
         if(r==BACKUP_IMPORT) {
             if(c==RESULT_OK && d!=null && d.getData()!=null) {
-                try { JSONObject data=readBackup(d.getData()); notifyRestore(data); }
+                try { JSONObject data=androidStorage.readBackup(d.getData()); notifyRestore(data); }
                 catch(Exception e) { notifyBackup("Не вдалося відновити копію: "+e.getMessage(), false); }
             } else notifyBackup("Відновлення скасовано.", false);
             return;
