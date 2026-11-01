@@ -1,0 +1,60 @@
+name: Build BUTDETAL APK
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare source project from uploaded archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f source.zip ]; then
+            mkdir -p /tmp/butdetal-source
+            unzip -q source.zip -d /tmp/butdetal-source
+            project_dir="$(find /tmp/butdetal-source -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+            test -n "$project_dir"
+            rsync -a --exclude='.git' "$project_dir/" ./
+          fi
+          test -f app/build.gradle
+          test -f settings.gradle
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Validate project
+        run: python3 tools/verify_project.py
+
+      - name: Build debug APK
+        run: gradle --no-daemon assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: BUTDETAL-2.0.8-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
