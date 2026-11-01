@@ -459,6 +459,13 @@ public class MainActivity extends Activity {
             i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION|Intent.FLAG_ACTIVITY_NEW_TASK); startActivity(i);
         }catch(Exception e){ if(webView!=null)webView.evaluateJavascript("window.onNativeUpdateResult&&window.onNativeUpdateResult("+JSONObject.quote("Не вдалося відкрити інсталятор: "+e.getMessage())+")",null); }
     }
+    @Override public void onBackPressed() {
+        if (webView != null && webView.canGoBack()) {
+            webView.goBack();
+            return;
+        }
+        super.onBackPressed();
+    }
     @Override protected void onDestroy(){
         if(updateReceiver!=null){try{unregisterReceiver(updateReceiver);}catch(Exception ignored){}}
         super.onDestroy();
