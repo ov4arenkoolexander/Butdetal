@@ -172,7 +172,7 @@ async function checkAppUpdate(){
  const box=document.getElementById('updateStatus');
  const old=document.getElementById('updateDownload');if(old)old.remove();
  box.textContent='Автоматично перевіряю нову версію BUTDETAL…';
- const repo='ov4arenkoolexander/BUTDETAL-1.7';
+ const repo='ov4arenkoolexander/Butdetal';
  try{
   const response=await fetch('https://api.github.com/repos/'+repo+'/releases/latest',{headers:{'Accept':'application/vnd.github+json'},cache:'no-store'});
   if(response.status===404){box.textContent='Поки що немає опублікованих оновлень.';return;}
