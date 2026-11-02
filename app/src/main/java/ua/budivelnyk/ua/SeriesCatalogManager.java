@@ -42,7 +42,7 @@ public final class SeriesCatalogManager {
             byte[] buffer = new byte[32768];
             while ((entry = zip.getNextEntry()) != null) {
                 if (++entries > MAX_ENTRIES) throw new IOException("Забагато файлів в архіві");
-                String name = entry.getName().replace('\\\\','/');
+                String name = entry.getName().replace((char)92,'/');
                 if (name.startsWith("/") || name.contains("../") || name.equals("..") || name.contains("/..")) {
                     zip.closeEntry(); continue;
                 }
