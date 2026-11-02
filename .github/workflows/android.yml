@@ -146,8 +146,10 @@ jobs:
             echo "Keystore cannot be opened. Check the Base64 file and BUTDETAL_KEYSTORE_PASSWORD secret."
             exit 1
           fi
+          echo "Aliases found in release keystore:"
+          keytool -list -keystore "$KEYSTORE_PATH" -storepass "$KEYSTORE_PASSWORD" | awk -F, '/PrivateKeyEntry|trustedCertEntry/ {print " - " $1}'
           if ! keytool -list -keystore "$KEYSTORE_PATH" -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null 2>&1; then
-            echo "Keystore opened, but the alias was not found. Check BUTDETAL_KEY_ALIAS."
+            echo "Keystore opened, but the configured alias was not found. Compare the alias list above with BUTDETAL_KEY_ALIAS."
             exit 1
           fi
           export BUTDETAL_KEYSTORE_PATH="$KEYSTORE_PATH"
