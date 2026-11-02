@@ -121,9 +121,31 @@ jobs:
           test -n "$KEY_ALIAS" || { echo "Missing BUTDETAL_KEY_ALIAS repository secret"; exit 1; }
           test -n "$KEY_PASSWORD" || { echo "Missing BUTDETAL_KEY_PASSWORD repository secret"; exit 1; }
           KEYSTORE_PATH="$GITHUB_WORKSPACE/butdetal-release.jks"
-          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
-          test -s "$KEYSTORE_PATH" || { echo "Keystore file was not created"; exit 1; }
-          keytool -list -keystore "$KEYSTORE_PATH" -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null
+          python3 - "$KEYSTORE_PATH" <<'PY'
+          import os, sys, base64, re
+          raw = os.environ["KEYSTORE_BASE64"]
+          raw = re.sub(r"-----BEGIN [^-]+-----|-----END [^-]+-----", "", raw)
+          raw = re.sub(r"\\s+", "", raw)
+          try:
+              data = base64.b64decode(raw, validate=True)
+          except Exception:
+              print("Keystore secret is not valid Base64. Recreate BUTDETAL_KEYSTORE_BASE64 from the .jks file.")
+              sys.exit(1)
+          if not data:
+              print("Decoded keystore is empty.")
+              sys.exit(1)
+          with open(sys.argv[1], "wb") as f:
+              f.write(data)
+          print("Keystore decoded; file size:", len(data), "bytes")
+          PY
+          if ! keytool -list -keystore "$KEYSTORE_PATH" -storepass "$KEYSTORE_PASSWORD" >/dev/null 2>&1; then
+            echo "Keystore cannot be opened. Check the Base64 file and BUTDETAL_KEYSTORE_PASSWORD secret."
+            exit 1
+          fi
+          if ! keytool -list -keystore "$KEYSTORE_PATH" -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null 2>&1; then
+            echo "Keystore opened, but the alias was not found. Check BUTDETAL_KEY_ALIAS."
+            exit 1
+          fi
           export BUTDETAL_KEYSTORE_PATH="$KEYSTORE_PATH"
           export BUTDETAL_KEYSTORE_PASSWORD="$KEYSTORE_PASSWORD"
           export BUTDETAL_KEY_ALIAS="$KEY_ALIAS"
