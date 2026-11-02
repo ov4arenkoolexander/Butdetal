@@ -33,7 +33,7 @@ footer{text-align:center;color:#8390a0;font-size:12px;padding:24px}
 </style>
 </head>
 <body>
-<header><small>ОФЛАЙН-ДОВІДНИК • ВЕРСІЯ 2.0.10 • КАРТКИ ВИРОБІВ + АРМУВАННЯ</small><h1><svg viewBox="0 0 64 64" width="46" height="46" style="vertical-align:middle;margin-right:8px" aria-label="BUTDETAL"><path fill="#ffc400" d="M7 9h50v3H7zM16 12v29h3V12zm31 0v29h3V12zM17 18h33v2H17z"/><path fill="none" stroke="#ffc400" stroke-width="2.5" d="M32 12v39m-5 0h10M32 12l10 0 5 5M32 12l-10 0-5 5"/><path fill="#d5dee8" d="M6 43l16-5v11L6 54zm19-6l16-5v11l-16 5zm19-6l14-4v11l-14 4z"/><path fill="#ffc400" d="M6 56l53-15v4L6 60z"/></svg>BUTDETAL</h1><p>Довідник для будівельника • Формули, бетон, арматура</p><button class="btn" style="background:#c9e7a3;color:#173f35" onclick="checkAppUpdate()">Перевірити оновлення</button><p id="updateStatus" class="muted" style="color:#e3eee8" aria-live="polite">Перевірка оновлень — вручну</p></header>
+<header><small>ОФЛАЙН-ДОВІДНИК • ВЕРСІЯ 2.0.13 • КАРТКИ ВИРОБІВ + АРМУВАННЯ</small><h1><svg viewBox="0 0 64 64" width="46" height="46" style="vertical-align:middle;margin-right:8px" aria-label="BUTDETAL"><path fill="#ffc400" d="M7 9h50v3H7zM16 12v29h3V12zm31 0v29h3V12zM17 18h33v2H17z"/><path fill="none" stroke="#ffc400" stroke-width="2.5" d="M32 12v39m-5 0h10M32 12l10 0 5 5M32 12l-10 0-5 5"/><path fill="#d5dee8" d="M6 43l16-5v11L6 54zm19-6l16-5v11l-16 5zm19-6l14-4v11l-14 4z"/><path fill="#ffc400" d="M6 56l53-15v4L6 60z"/></svg>BUTDETAL</h1><p>Довідник для будівельника • Формули, бетон, арматура</p><button class="btn" style="background:#c9e7a3;color:#173f35" onclick="checkAppUpdate()">Перевірити оновлення</button><p id="updateStatus" class="muted" style="color:#e3eee8" aria-live="polite">Перевірка оновлень — вручну</p></header>
 
 <section id="authGate" class="auth-panel">
 <h2>🔐 Вхід до BUTDETAL</h2>
@@ -54,6 +54,7 @@ footer{text-align:center;color:#8390a0;font-size:12px;padding:24px}
 <button class="tab active" onclick="showTab('home',this)">Головна</button>
 <button class="tab" onclick="showTab('concrete',this)">Об’єм бетону</button>
 <button class="tab" onclick="showTab('steel',this)">Арматура</button>
+<button class="tab" onclick="showTab('products',this)">Каталог виробів</button>
 
 <button class="tab" onclick="showTab('formulas',this)">Формули</button>
 <button class="tab" onclick="showTab('archive',this)">Фото й креслення</button>
@@ -69,15 +70,16 @@ footer{text-align:center;color:#8390a0;font-size:12px;padding:24px}
 
 <button class="shortcut" onclick="navTo('archive')"><span class="shortcut-icon">▧</span><b>Архів</b><small>Фото й креслення</small></button>
 </div>
-<div class="card catalog-home"><div class="section-heading"><div><span class="eyebrow">ОБЛІК ВИРОБІВ</span><h2>Каталог виробів</h2></div><span class="section-symbol">▤</span></div><p class="muted">Шукай за назвою, маркуванням, типом або розмірами. Відкривай картки з фото та кресленнями.</p><input id="productSearch" class="search" placeholder="Наприклад: ПК 60-12-8, плита, 2400 мм" oninput="renderProductCatalog()"><button class="btn" onclick="newProductCard()">＋ Додати виріб до каталогу</button><div id="productCatalog"></div></div>
+<div class="card"><h2>Каталог виробів</h2><p class="muted">Каталог винесено в окрему вкладку верхнього меню.</p><button class="btn" onclick="navTo('products')">Відкрити каталог виробів</button></div>
+<div class="card"><div class="section-heading"><h2>Синхронізація</h2><span class="online-dot"></span></div><p class="muted">Спільна база підприємства. Після підключення інтернету можна оновити дані.</p><div class="sync-line"><span id="syncStatus">Очікує синхронізації</span></div><button class="btn secondary" onclick="syncButdetalRecords()">⟳ Синхронізувати каталог і файли</button></div>
+<div class="warning">Довідник допомагає з обліком і довідковими обчисленнями, але не замінює робочий проєкт конструктора та чинні будівельні норми.</div>
+</section>
+<section id="products" class="page hidden"><div class="card catalog-home"><div class="section-heading"><div><span class="eyebrow">ОБЛІК ВИРОБІВ</span><h2>Каталог виробів</h2></div><span class="section-symbol">▤</span></div><p class="muted">Шукай за назвою, маркуванням, типом або розмірами. Відкривай картки з фото та кресленнями.</p><input id="productSearch" class="search" placeholder="Наприклад: ПК 60-12-8, плита, 2400 мм" oninput="renderProductCatalog()"><button class="btn" onclick="newProductCard()">＋ Додати виріб до каталогу</button><div id="productCatalog"></div></div>
 <div class="card"><div class="section-heading"><div><span class="eyebrow">ІНСТРУМЕНТИ</span><h2>Швидкі розрахунки</h2></div><span class="section-symbol">⌗</span></div><div class="row">
 <button class="tool-tile" onclick="navTo('concrete')"><span class="tool-art">▰</span><b>Об’єм бетону</b><small>Плита · стрічка · колона</small></button>
 <button class="tool-tile" onclick="navTo('steel')"><span class="tool-art">⌁</span><b>Маса арматури</b><small>Діаметр · довжина · кількість</small></button>
 </div></div>
-<div class="card"><div class="section-heading"><div><span class="eyebrow">ДОВІДКОВІ МАТЕРІАЛИ</span><h2>База знань</h2></div><span class="section-symbol">▥</span></div></div><div class="item" onclick="navTo('formulas')"><b>Формули</b><div class="muted">Площа, об’єм і розрахункові залежності →</div></div><div class="item" onclick="navTo('archive')"><b>Фото й креслення</b><div class="muted">Окремий архів матеріалів підприємства →</div></div></div>
-<div class="card"><div class="section-heading"><h2>Синхронізація</h2><span class="online-dot"></span></div><p class="muted">Спільна база підприємства. Після підключення інтернету можна оновити дані.</p><div class="sync-line"><span id="syncStatus">Очікує синхронізації</span></div><button class="btn secondary" onclick="syncButdetalRecords()">⟳ Синхронізувати каталог і файли</button></div>
-<div class="warning">Довідник допомагає з обліком і довідковими обчисленнями, але не замінює робочий проєкт конструктора та чинні будівельні норми.</div>
-</section>
+<div class="card"><div class="section-heading"><div><span class="eyebrow">ДОВІДКОВІ МАТЕРІАЛИ</span><h2>База знань</h2></div><span class="section-symbol">▥</span></div></div><div class="item" onclick="navTo('formulas')"><b>Формули</b><div class="muted">Площа, об’єм і розрахункові залежності →</div></div><div class="item" onclick="navTo('archive')"><b>Фото й креслення</b><div class="muted">Окремий архів матеріалів підприємства →</div></div></div></section>
 <section id="productEditor" class="page hidden">
 <div class="card"><h2 id="productEditorTitle">Нова картка виробу</h2><input id="productId" type="hidden">
 <label>Назва виробу</label><input id="productName" maxlength="120" placeholder="Наприклад: Плита перекриття">
