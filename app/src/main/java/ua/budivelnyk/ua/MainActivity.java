@@ -157,7 +157,7 @@ public class MainActivity extends Activity {
     public class AndroidStorage {
         @JavascriptInterface public String saveCredential(String email,String password) {
             try { JSONObject o=new JSONObject();o.put("email",email);o.put("password",password);
-                getSharedPreferences("butdetal_secure_v1",MODE_PRIVATE).edit().putString("credential",encryptCredential(o.toString())).apply();return "OK";
+                boolean saved=getSharedPreferences("butdetal_secure_v1",MODE_PRIVATE).edit().putString("credential",encryptCredential(o.toString())).commit();if(!saved)throw new IOException("Не вдалося записати пароль у захищене сховище");return "OK";
             } catch(Exception e){return "Помилка захищеного збереження: "+e.getMessage();}
         }
         @JavascriptInterface public String getCredential() {
