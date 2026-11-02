@@ -88,7 +88,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          APP_VERSION="$(grep -oE "versionName ['\\\"][^'\\\"]+['\\\"]" app/build.gradle | head -n 1 | cut -d "'" -f 2)"
+          APP_VERSION="$(awk -F"'" '/versionName/ {print $2; exit}' app/build.gradle)"
           TAG_VERSION="${GITHUB_REF_NAME#v}"
           test -n "$APP_VERSION"
           test "$APP_VERSION" = "$TAG_VERSION" || { echo "Tag $TAG_VERSION does not match app version $APP_VERSION"; exit 1; }
