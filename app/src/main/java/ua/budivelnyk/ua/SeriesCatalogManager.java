@@ -145,8 +145,18 @@ public final class SeriesCatalogManager {
             String rel = root.toURI().relativize(f.toURI()).getPath();
             String category = f.getParentFile().equals(root) ? "Інші серії" : f.getParentFile().getName();
             String title = f.getName().substring(0, f.getName().length()-4);
+            String textPath = rel.substring(0, rel.length()-4) + ".txt";
+            File extractedText = new File(root, "Текст_для_пошуку/" + textPath);
+            String extracted = "";
+            if (!query.isEmpty() && extractedText.isFile() && extractedText.length() < 2L*1024L*1024L) {
+                try (InputStream in = new FileInputStream(extractedText); ByteArrayOutputStream data = new ByteArrayOutputStream()) {
+                    byte[] b = new byte[8192]; int n; int read = 0;
+                    while ((n = in.read(b)) != -1 && read < 512*1024) { data.write(b,0,n); read += n; }
+                    extracted = data.toString("UTF-8").toLowerCase(Locale.ROOT);
+                } catch (Exception ignored) {}
+            }
             String hay = (title + " " + category + " " + rel).toLowerCase(Locale.ROOT);
-            if (!query.isEmpty() && !hay.contains(query)) continue;
+            if (!query.isEmpty() && !hay.contains(query) && !extracted.contains(query)) continue;
             JSONObject item = new JSONObject();
             item.put("title", title); item.put("category", category); item.put("pdf", rel);
             item.put("size", f.length()); item.put("modified", f.lastModified());
@@ -159,11 +169,9 @@ public final class SeriesCatalogManager {
         File root = new File(baseDir, "Каталог");
         File pdf = safeResolve(root, pdfRelativePath);
         if (pdf == null || !pdf.isFile()) return out;
-        String category = pdf.getParentFile().equals(root) ? "" : pdf.getParentFile().getName();
-        String title = pdf.getName().substring(0, pdf.getName().length()-4);
-        File images = new File(root, "Креслення_JPG");
-        if (!category.isEmpty()) images = new File(images, category);
-        images = new File(images, title);
+        String imageRelative = "Креслення_JPG/" + pdfRelativePath.substring(0, pdfRelativePath.length()-4);
+        File images = safeResolve(root, imageRelative);
+        if (images == null) return out;
         File[] pages = images.listFiles((d,n) -> {
             String x=n.toLowerCase(Locale.ROOT);
             return x.endsWith(".jpg") || x.endsWith(".jpeg") || x.endsWith(".png");
