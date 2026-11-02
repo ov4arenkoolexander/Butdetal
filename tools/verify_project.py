@@ -22,15 +22,15 @@ for f in ('index.html','armature.html','xlsx.full.min.js'):
     if not (ROOT/'app/src/main/assets'/f).is_file():
         print(f'ERROR: missing asset: {f}'); sys.exit(1)
 gradle = (ROOT/'app/build.gradle').read_text(encoding='utf-8')
-if "versionName '2.0.8'" not in gradle:
-    print('ERROR: Gradle version is not 2.0.8'); sys.exit(1)
+if "versionName '2.0.9'" not in gradle:
+    print('ERROR: Gradle version is not 2.0.9'); sys.exit(1)
 for token in ('getAppVersion','downloadAndInstall'):
     if token not in java:
         print(f'ERROR: missing native updater method: {token}'); sys.exit(1)
 index = (ROOT/'app/src/main/assets/index.html').read_text(encoding='utf-8')
-if 'releases/latest' not in index or 'ov4arenkoolexander/BUTDETAL-1.7' not in index:
+if 'releases/latest' not in index or 'ov4arenkoolexander/Butdetal' not in index:
     print('ERROR: latest-release update endpoint missing'); sys.exit(1)
 if 'createButdetalBackup' not in index or 'restoreButdetalBackup' not in index:
     print('ERROR: backup/restore UI is missing'); sys.exit(1)
-print('Static checks passed: Android bridge, OCR data, backup/restore, app assets, and in-app updater 2.0.8.')
+print('Static checks passed: Android bridge, OCR data, backup/restore, app assets, and in-app updater 2.0.9.')
 print('NOTE: This does not prove Gradle compilation or runtime OCR correctness.')
