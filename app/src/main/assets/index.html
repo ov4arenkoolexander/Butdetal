@@ -292,10 +292,11 @@ function excelWorkbook(){
 function exportWorkbookToPhone(wb,filename){
  const status=document.getElementById('excelExportStatus');
  try{const bytes=XLSX.write(wb,{bookType:'xlsx',type:'base64'});
- if(window.AndroidStorage&&AndroidStorage.saveDocument){status.textContent='Вибери папку та підтверди збереження файлу…';const result=AndroidStorage.saveDocument(filename,'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',bytes);if(result!=='OK')status.textContent=result||'Не вдалося відкрити збереження.';return}
+ if(window.AndroidStorage&&AndroidStorage.saveDocument){status.textContent='Вибери папку та підтверди збереження файлу…';const result=AndroidStorage.saveDocument(filename,'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',bytes);if(result==='DOCUMENT_EXPORT_STARTED'){status.textContent='Вибери папку та підтверди збереження файлу…';}else if(result!=='OK'){status.textContent=result||'Не вдалося відкрити збереження.';}return}
  const blob=new Blob([Uint8Array.from(atob(bytes),c=>c.charCodeAt(0))],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);status.textContent='Файл підготовлено для завантаження.';
  }catch(e){status.textContent='Помилка експорту: '+e.message}
 }
+window.onNativeExcelExportResult=function(message,success){const el=document.getElementById('excelExportStatus');if(el)el.textContent=message;};
 function exportSelectedExcel(){
  const names=[...document.querySelectorAll('.excel-sheet-choice:checked')].map(x=>x.value),status=document.getElementById('excelExportStatus');
  if(!names.length){status.textContent='Познач хоча б один розділ.';return}
