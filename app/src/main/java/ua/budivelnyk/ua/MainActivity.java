@@ -54,7 +54,8 @@ public class MainActivity extends Activity {
     private static final int PICK=1401;
     private static final int BACKUP_EXPORT=1402;
     private static final int BACKUP_IMPORT=1403;
-    private static final int SERIES_IMPORT=1404;\n    private SeriesCatalogManager seriesCatalogManager;
+    private static final int SERIES_IMPORT=1404;
+    private SeriesCatalogManager seriesCatalogManager;
     private String pendingBackupJson="{}";
     private AndroidStorage androidStorage;
     private StringBuilder backupJsonBuilder=new StringBuilder();
