@@ -53,7 +53,7 @@ import android.content.pm.PackageManager;
 public class MainActivity extends Activity {
     private static final int PICK=1401;
     private static final int BACKUP_EXPORT=1402;
-    private static final int BACKUP_IMPORT=1403;
+    private static final int BACKUP_IMPORT=1403;\n    private static final int SERIES_IMPORT=1404;\n    private SeriesCatalogManager seriesCatalogManager;
     private String pendingBackupJson="{}";
     private AndroidStorage androidStorage;
     private StringBuilder backupJsonBuilder=new StringBuilder();
@@ -154,7 +154,53 @@ public class MainActivity extends Activity {
         return new String(c.doFinal(enc),StandardCharsets.UTF_8);
     }
 
+    private void notifySeriesImport(JSONObject result) {
+        if (webView == null) return;
+        webView.post(() -> webView.evaluateJavascript(
+            "window.onSeriesImportResult && window.onSeriesImportResult(" + result.toString() + ")", null));
+    }
+
     public class AndroidStorage {
+        @JavascriptInterface public String chooseSeriesArchive() {
+            try {
+                Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                intent.setType("application/zip");
+                intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"application/zip", "application/x-zip-compressed", "application/octet-stream"});
+                startActivityForResult(intent, SERIES_IMPORT);
+                return "PICKER_OPENED";
+            } catch (Exception e) { return "Помилка відкриття вибору ZIP: " + e.getMessage(); }
+        }
+        @JavascriptInterface public String listSeriesCatalog(String query) {
+            try { return seriesCatalogManager.listSeries(query).toString(); }
+            catch (Exception e) { return "[]"; }
+        }
+        @JavascriptInterface public String listSeriesPages(String pdfRelativePath) {
+            try { return seriesCatalogManager.listPages(pdfRelativePath).toString(); }
+            catch (Exception e) { return "[]"; }
+        }
+        @JavascriptInterface public String readSeriesPageBase64(String relativePath) {
+            try {
+                File f = seriesCatalogManager.resolve(relativePath);
+                if (f == null || !f.isFile() || f.length() > 20L * 1024L * 1024L) return "";
+                return Base64.encodeToString(bytes(f), Base64.NO_WRAP);
+            } catch (Exception e) { return ""; }
+        }
+        @JavascriptInterface public String openSeriesPdf(String relativePath) {
+            try {
+                File f = seriesCatalogManager.resolve(relativePath);
+                if (f == null || !f.isFile()) return "Файл не знайдено";
+                Uri uri = FileProvider.getUriForFile(MainActivity.this, getPackageName() + ".provider", f);
+                Intent intent = new Intent(Intent.ACTION_VIEW);
+                intent.setDataAndType(uri, "application/pdf");
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                startActivity(intent);
+                return "OK";
+            } catch (Exception e) { return "Не вдалося відкрити PDF: " + e.getMessage(); }
+        }
+        @JavascriptInterface public String seriesCatalogPath() {
+            return seriesCatalogManager.getBaseDir().getAbsolutePath();
+        }
         @JavascriptInterface public String saveCredential(String email,String password) {
             try { JSONObject o=new JSONObject();o.put("email",email);o.put("password",password);
                 getSharedPreferences("butdetal_secure_v1",MODE_PRIVATE).edit().putString("credential",encryptCredential(o.toString())).apply();return "OK";
@@ -426,7 +472,7 @@ public class MainActivity extends Activity {
         });
         WebSettings s=webView.getSettings();s.setJavaScriptEnabled(true);s.setDomStorageEnabled(true);
         s.setAllowFileAccess(true);s.setAllowContentAccess(true);
-        androidStorage=new AndroidStorage();
+        seriesCatalogManager = new SeriesCatalogManager(this);\n        androidStorage=new AndroidStorage();
         webView.addJavascriptInterface(androidStorage,"AndroidStorage");
         webView.setBackgroundColor(0xFF0B1420);setContentView(webView);
         folder("drawings");folder("products");pdfFolder();
@@ -484,6 +530,26 @@ public class MainActivity extends Activity {
                 try { JSONObject data=androidStorage.readBackup(d.getData()); notifyRestore(data); }
                 catch(Exception e) { notifyBackup("Не вдалося відновити копію: "+e.getMessage(), false); }
             } else notifyBackup("Відновлення скасовано.", false);
+            return;
+        }
+        if (r == SERIES_IMPORT) {
+            if (c == RESULT_OK && d != null && d.getData() != null) {
+                final Uri archiveUri = d.getData();
+                try { getContentResolver().takePersistableUriPermission(archiveUri, Intent.FLAG_GRANT_READ_URI_PERMISSION); } catch (Exception ignored) {}
+                new Thread(() -> {
+                    JSONObject result;
+                    try { result = seriesCatalogManager.importZip(archiveUri); }
+                    catch (Exception e) {
+                        result = new JSONObject();
+                        try { result.put("ok", false); result.put("message", "Помилка імпорту: " + e.getMessage()); } catch (Exception ignored) {}
+                    }
+                    notifySeriesImport(result);
+                }).start();
+            } else {
+                JSONObject result = new JSONObject();
+                try { result.put("ok", false); result.put("message", "Імпорт скасовано"); } catch (Exception ignored) {}
+                notifySeriesImport(result);
+            }
             return;
         }
         if(r==PICK&&callback!=null){
