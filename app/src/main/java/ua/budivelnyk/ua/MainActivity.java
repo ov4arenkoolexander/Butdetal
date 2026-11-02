@@ -53,7 +53,8 @@ import android.content.pm.PackageManager;
 public class MainActivity extends Activity {
     private static final int PICK=1401;
     private static final int BACKUP_EXPORT=1402;
-    private static final int BACKUP_IMPORT=1403;\n    private static final int SERIES_IMPORT=1404;\n    private SeriesCatalogManager seriesCatalogManager;
+    private static final int BACKUP_IMPORT=1403;
+    private static final int SERIES_IMPORT=1404;\n    private SeriesCatalogManager seriesCatalogManager;
     private String pendingBackupJson="{}";
     private AndroidStorage androidStorage;
     private StringBuilder backupJsonBuilder=new StringBuilder();
@@ -509,7 +510,8 @@ public class MainActivity extends Activity {
         });
         WebSettings s=webView.getSettings();s.setJavaScriptEnabled(true);s.setDomStorageEnabled(true);
         s.setAllowFileAccess(true);s.setAllowContentAccess(true);
-        seriesCatalogManager = new SeriesCatalogManager(this);\n        androidStorage=new AndroidStorage();
+        seriesCatalogManager = new SeriesCatalogManager(this);
+        androidStorage=new AndroidStorage();
         webView.addJavascriptInterface(androidStorage,"AndroidStorage");
         webView.setBackgroundColor(0xFF0B1420);setContentView(webView);
         folder("drawings");folder("products");pdfFolder();
