@@ -173,7 +173,7 @@ public final class SeriesCatalogManager {
         for (File page : pages) {
             JSONObject item = new JSONObject();
             item.put("name", page.getName());
-            item.put("path", images.toURI().relativize(page.toURI()).getPath());
+            item.put("path", root.toURI().relativize(page.toURI()).getPath());
             out.put(item);
         }
         return out;
