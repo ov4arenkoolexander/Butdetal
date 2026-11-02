@@ -186,6 +186,43 @@ public class MainActivity extends Activity {
                 return Base64.encodeToString(bytes(f), Base64.NO_WRAP);
             } catch (Exception e) { return ""; }
         }
+        @JavascriptInterface public String recognizeSeriesPdf(String relativePath) {
+            File source = seriesCatalogManager.resolve(relativePath);
+            if (source == null || !source.isFile()) return "PDF не знайдено";
+            StringBuilder recognized = new StringBuilder();
+            try (ParcelFileDescriptor pfd = ParcelFileDescriptor.open(source, ParcelFileDescriptor.MODE_READ_ONLY);
+                 PdfRenderer renderer = new PdfRenderer(pfd)) {
+                int count = Math.min(renderer.getPageCount(), 40);
+                for (int i = 0; i < count; i++) {
+                    PdfRenderer.Page page = renderer.openPage(i);
+                    Bitmap bitmap = null;
+                    try {
+                        float scale = Math.min(2.0f, 2200.0f / Math.max(page.getWidth(), page.getHeight()));
+                        int width = Math.max(1, (int)(page.getWidth() * scale));
+                        int height = Math.max(1, (int)(page.getHeight() * scale));
+                        bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+                        bitmap.eraseColor(android.graphics.Color.WHITE);
+                        page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
+                        recognized.append("\\n--- Сторінка ").append(i + 1).append(" ---\\n");
+                        recognized.append(recognizeBitmap(bitmap)).append("\\n");
+                    } finally {
+                        if (bitmap != null && !bitmap.isRecycled()) bitmap.recycle();
+                        page.close();
+                    }
+                }
+                if (renderer.getPageCount() > count) recognized.append("\\nOCR обробив перші ").append(count).append(" сторінок із ").append(renderer.getPageCount()).append(".");
+                String rel = relativePath.substring(0, relativePath.length() - 4) + ".txt";
+                File root = new File(seriesCatalogManager.getBaseDir(), "Каталог");
+                File target = new File(root, "Текст_для_пошуку/" + rel);
+                if (!target.getCanonicalPath().startsWith(root.getCanonicalPath() + File.separator)) return "Небезпечний шлях для текстового файлу";
+                File parent = target.getParentFile();
+                if (!parent.exists() && !parent.mkdirs()) return "Не вдалося створити папку OCR";
+                try (FileOutputStream out = new FileOutputStream(target)) {
+                    out.write(recognized.toString().getBytes(StandardCharsets.UTF_8));
+                }
+                return "OCR завершено: " + count + " сторінок. Текст додано до пошуку.";
+            } catch (Exception e) { return "Помилка OCR серії: " + e.getMessage(); }
+        }
         @JavascriptInterface public String openSeriesPdf(String relativePath) {
             try {
                 File f = seriesCatalogManager.resolve(relativePath);
