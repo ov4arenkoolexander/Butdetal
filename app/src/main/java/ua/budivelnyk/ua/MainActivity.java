@@ -460,8 +460,13 @@ public class MainActivity extends Activity {
         }catch(Exception e){ if(webView!=null)webView.evaluateJavascript("window.onNativeUpdateResult&&window.onNativeUpdateResult("+JSONObject.quote("Не вдалося відкрити інсталятор: "+e.getMessage())+")",null); }
     }
     @Override public void onBackPressed() {
-        if (webView != null && webView.canGoBack()) {
-            webView.goBack();
+        if (webView != null) {
+            webView.evaluateJavascript("(function(){if(window.handleAndroidBack){return window.handleAndroidBack();}return false;})()", value -> {
+                if ("false".equals(value) || "null".equals(value)) {
+                    if (webView != null && webView.canGoBack()) webView.goBack();
+                    else MainActivity.super.onBackPressed();
+                }
+            });
             return;
         }
         super.onBackPressed();
