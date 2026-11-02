@@ -205,8 +205,8 @@ public class MainActivity extends Activity {
                         bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
                         bitmap.eraseColor(android.graphics.Color.WHITE);
                         page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
-                        recognized.append("\\n--- Сторінка ").append(i + 1).append(" ---\\n");
-                        recognized.append(recognizeBitmap(bitmap)).append("\\n");
+                        recognized.append("\n--- Сторінка ").append(i + 1).append(" ---\n");
+                        recognized.append(recognizeBitmap(bitmap)).append("\n");
                     } finally {
                         if (bitmap != null && !bitmap.isRecycled()) bitmap.recycle();
                         page.close();
