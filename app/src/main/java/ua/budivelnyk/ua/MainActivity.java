@@ -169,7 +169,7 @@ public class MainActivity extends Activity {
                 intent.addCategory(Intent.CATEGORY_OPENABLE);
                 intent.setType("application/zip");
                 intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"application/zip", "application/x-zip-compressed", "application/octet-stream"});
-                startActivityForResult(intent, SERIES_IMPORT);
+                runOnUiThread(() -> startActivityForResult(intent, SERIES_IMPORT));
                 return "PICKER_OPENED";
             } catch (Exception e) { return "Помилка відкриття вибору ZIP: " + e.getMessage(); }
         }
@@ -233,7 +233,7 @@ public class MainActivity extends Activity {
                 Intent intent = new Intent(Intent.ACTION_VIEW);
                 intent.setDataAndType(uri, "application/pdf");
                 intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                startActivity(intent);
+                runOnUiThread(() -> startActivity(intent));
                 return "OK";
             } catch (Exception e) { return "Не вдалося відкрити PDF: " + e.getMessage(); }
         }
