@@ -54,6 +54,9 @@ public class MainActivity extends Activity {
     private static final int PICK=1401;
     private static final int BACKUP_EXPORT=1402;
     private static final int BACKUP_IMPORT=1403;
+    private static final int EXCEL_EXPORT=1404;
+    private String pendingExcelBase64="";
+    private String pendingExcelMime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
     private String pendingBackupJson="{}";
     private AndroidStorage androidStorage;
     private StringBuilder backupJsonBuilder=new StringBuilder();
@@ -169,11 +172,16 @@ public class MainActivity extends Activity {
         }
         @JavascriptInterface public String saveDocument(String name,String mime,String base64) {
             try {
-                File root=getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS);if(root==null)root=new File(getFilesDir(),"Documents");
-                File dir=new File(root,"BUTDETAL_Експорт");if(!dir.exists()&&!dir.mkdirs())throw new IOException("Не вдалося створити папку експорту");
-                File f=new File(dir,safeName(name));try(FileOutputStream out=new FileOutputStream(f)){out.write(Base64.decode(base64,Base64.DEFAULT));}
-                return "OK";
-            }catch(Exception e){return "Помилка експорту: "+e.getMessage();}
+                if(base64==null || base64.isEmpty())throw new IOException("Немає даних Excel-файлу");
+                pendingExcelBase64=base64;
+                pendingExcelMime=(mime==null||mime.isEmpty())?"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":mime;
+                Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);
+                i.addCategory(Intent.CATEGORY_OPENABLE);
+                i.setType(pendingExcelMime);
+                i.putExtra(Intent.EXTRA_TITLE,safeName(name));
+                startActivityForResult(i,EXCEL_EXPORT);
+                return "DOCUMENT_EXPORT_STARTED";
+            }catch(Exception e){pendingExcelBase64="";return "Помилка експорту: "+e.getMessage();}
         }
         @JavascriptInterface public String saveImage(String c,String name,String data,String title,String notes,String date) {
             try {
@@ -477,6 +485,21 @@ public class MainActivity extends Activity {
     }
     @Override protected void onActivityResult(int r,int c,Intent d) {
         super.onActivityResult(r,c,d);
+        if(r==EXCEL_EXPORT) {
+            String data=pendingExcelBase64;
+            pendingExcelBase64="";
+            if(c==RESULT_OK && d!=null && d.getData()!=null) {
+                try {
+                    byte[] raw=Base64.decode(data,Base64.DEFAULT);
+                    try(OutputStream out=getContentResolver().openOutputStream(d.getData())) {
+                        if(out==null)throw new IOException("Не вдалося відкрити файл для запису");
+                        out.write(raw);
+                    }
+                    notifyExcelExport("Excel-файл успішно збережено.",true);
+                } catch(Exception e) { notifyExcelExport("Помилка збереження Excel: "+e.getMessage(),false); }
+            } else notifyExcelExport("Збереження Excel скасовано.",false);
+            return;
+        }
         if(r==BACKUP_EXPORT) {
             if(c==RESULT_OK && d!=null && d.getData()!=null) {
                 try { androidStorage.writeBackup(d.getData(), pendingBackupJson); notifyBackup("Експорт резервної копії завершено.", true); }
@@ -500,6 +523,9 @@ public class MainActivity extends Activity {
             }
             callback.onReceiveValue(u);callback=null;
         }
+    }
+    private void notifyExcelExport(String message, boolean success) {
+        if(webView!=null) webView.post(()->webView.evaluateJavascript("window.onNativeExcelExportResult&&window.onNativeExcelExportResult("+JSONObject.quote(message)+","+success+")",null));
     }
     private void notifyBackup(String message, boolean success) {
         if(webView!=null) webView.post(()->webView.evaluateJavascript("window.onNativeBackupResult&&window.onNativeBackupResult("+JSONObject.quote(message)+","+success+")",null));
