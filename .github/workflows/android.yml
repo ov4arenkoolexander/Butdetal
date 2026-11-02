@@ -107,24 +107,29 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Configure stable release signing key
+      - name: Build signed release APK
         shell: bash
         env:
           KEYSTORE_BASE64: ${{ secrets.BUTDETAL_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.BUTDETAL_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.BUTDETAL_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.BUTDETAL_KEY_PASSWORD }}
         run: |
           set -euo pipefail
           test -n "$KEYSTORE_BASE64" || { echo "Missing BUTDETAL_KEYSTORE_BASE64 repository secret"; exit 1; }
-          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/butdetal-release.jks"
-          test -s "$RUNNER_TEMP/butdetal-release.jks"
-
-      - name: Build signed release APK
-        env:
-          BUTDETAL_KEYSTORE_PATH: ${{ runner.temp }}/butdetal-release.jks
-          BUTDETAL_KEYSTORE_PASSWORD: ${{ secrets.BUTDETAL_KEYSTORE_PASSWORD }}
-          BUTDETAL_KEY_ALIAS: ${{ secrets.BUTDETAL_KEY_ALIAS }}
-          BUTDETAL_KEY_PASSWORD: ${{ secrets.BUTDETAL_KEY_PASSWORD }}
-        run: gradle --no-daemon assembleRelease
-
+          test -n "$KEYSTORE_PASSWORD" || { echo "Missing BUTDETAL_KEYSTORE_PASSWORD repository secret"; exit 1; }
+          test -n "$KEY_ALIAS" || { echo "Missing BUTDETAL_KEY_ALIAS repository secret"; exit 1; }
+          test -n "$KEY_PASSWORD" || { echo "Missing BUTDETAL_KEY_PASSWORD repository secret"; exit 1; }
+          KEYSTORE_PATH="$RUNNER_TEMP/butdetal-release.jks"
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
+          test -s "$KEYSTORE_PATH" || { echo "Keystore file was not created"; exit 1; }
+          keytool -list -keystore "$KEYSTORE_PATH" -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null
+          BUTDETAL_KEYSTORE_PATH="$KEYSTORE_PATH" \
+          BUTDETAL_KEYSTORE_PASSWORD="$KEYSTORE_PASSWORD" \
+          BUTDETAL_KEY_ALIAS="$KEY_ALIAS" \
+          BUTDETAL_KEY_PASSWORD="$KEY_PASSWORD" \
+          gradle --no-daemon assembleRelease
+          
       - name: Publish GitHub Release with APK
         uses: softprops/action-gh-release@v2
         with:
