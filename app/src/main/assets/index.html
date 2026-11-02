@@ -74,7 +74,7 @@ footer{text-align:center;color:#8390a0;font-size:12px;padding:24px}
 <div class="card"><div class="section-heading"><h2>Синхронізація</h2><span class="online-dot"></span></div><p class="muted">Спільна база підприємства. Після підключення інтернету можна оновити дані.</p><div class="sync-line"><span id="syncStatus">Очікує синхронізації</span></div><button class="btn secondary" onclick="syncButdetalRecords()">⟳ Синхронізувати каталог і файли</button></div>
 <div class="warning">Довідник допомагає з обліком і довідковими обчисленнями, але не замінює робочий проєкт конструктора та чинні будівельні норми.</div>
 </section>
-<section id="products" class="page hidden"><div class="card catalog-home"><div class="section-heading"><div><span class="eyebrow">ОБЛІК ВИРОБІВ</span><h2>Каталог виробів</h2></div><span class="section-symbol">▤</span></div><p class="muted">Шукай за назвою, маркуванням, типом або розмірами. Відкривай картки з фото та кресленнями.</p><input id="productSearch" class="search" placeholder="Наприклад: ПК 60-12-8, плита, 2400 мм" oninput="renderProductCatalog()"><button class="btn" onclick="newProductCard()">＋ Додати виріб до каталогу</button><div id="productCatalog"></div></div>
+<section id="products" class="page hidden"><div class="card catalog-home"><div class="section-heading"><div><span class="eyebrow">ОБЛІК ВИРОБІВ</span><h2>Каталог виробів</h2></div><span class="section-symbol">▤</span></div><p class="muted">Шукай за назвою, маркуванням, типом або розмірами. Відкривай картки з фото та кресленнями.</p><input id="productSearch" class="search" placeholder="Наприклад: ПК 60-12-8, плита, 2400 мм" oninput="renderProductCatalog()"><button class="btn" onclick="newProductCard()">＋ Додати виріб до каталогу</button><button class="btn danger" onclick="removeDimensionMatchedSlabs()">Прибрати плити з відповідним маркуванням і розмірами</button><div id="catalogCleanupStatus" class="muted" aria-live="polite"></div><div id="productCatalog"></div></div>
 <div class="card"><div class="section-heading"><div><span class="eyebrow">ІНСТРУМЕНТИ</span><h2>Швидкі розрахунки</h2></div><span class="section-symbol">⌗</span></div><div class="row">
 <button class="tool-tile" onclick="navTo('concrete')"><span class="tool-art">▰</span><b>Об’єм бетону</b><small>Плита · стрічка · колона</small></button>
 <button class="tool-tile" onclick="navTo('steel')"><span class="tool-art">⌁</span><b>Маса арматури</b><small>Діаметр · довжина · кількість</small></button>
@@ -159,6 +159,36 @@ let currentProductId='';
 function productRecords(){try{return JSON.parse(localStorage.getItem('bua_product_catalog')||'[]')}catch(e){return []}}
 function saveProductRecords(a){localStorage.setItem('bua_product_catalog',JSON.stringify(a))}
 function productSearchText(x){return [x.name,x.mark,x.type,x.dimensions,x.rebar,x.notes].join(' ').toLowerCase()}
+function dimensionMatchedSlab(x){
+ const mark=String(x.mark||x.name||'').toUpperCase().replace(/І/g,'I');
+ if(!/\\bПК\\b/.test(mark))return false;
+ const code=mark.match(/\\bПК\\s*[-.]?\\s*(\\d{2})\\s*[-.]\\s*(\\d{2})\\b/);
+ if(!code)return false;
+ const nums=String(x.dimensions||'').match(/\\d+(?:[.,]\\d+)?/g);
+ if(!nums||nums.length<2)return false;
+ const dims=nums.slice(0,3).map(v=>Number(v.replace(',','.')));
+ if(dims.length<2||!dims.every(Number.isFinite))return false;
+ const length=Number(code[1])*100,width=Number(code[2])*100;
+ return (dims[0]===length&&dims[1]===width)||(dims[0]===width&&dims[1]===length);
+}
+async function removeDimensionMatchedSlabs(){
+ const status=document.getElementById('catalogCleanupStatus'),local=productRecords(),matches=local.filter(dimensionMatchedSlab);
+ if(!matches.length){status.textContent='У локальному каталозі таких плит не знайдено.';return}
+ const labels=matches.slice(0,8).map(x=>(x.mark||x.name)+' — '+(x.dimensions||'без розмірів')).join('\\n');
+ if(!confirm('Знайдено '+matches.length+' плит, у яких маркування ПК відповідає довжині та ширині. Видалити ці картки з локального та спільного каталогу?\\n\\n'+labels+(matches.length>8?'\\n…':'')+'\\n\\nФото й креслення в архіві залишаться.'))return;
+ status.textContent='Видаляю записи зі спільного каталогу…';
+ try{
+  const session=currentButdetalSession();
+  if(session){
+   const remote=await sbRequest('/rest/v1/shared_records?select=id,data&record_type=eq.product');
+   const remoteMatches=(remote||[]).filter(r=>dimensionMatchedSlab({...r.data,id:r.id}));
+   for(const r of remoteMatches)await deleteCloudProduct(r.id);
+  }
+  saveProductRecords(local.filter(x=>!dimensionMatchedSlab(x)));
+  renderProductCatalog();
+  status.textContent='Видалено '+matches.length+' карток із локального каталогу'+(session?' і відповідні записи зі спільної бази':'')+'. Фото та креслення не видалялися.';
+ }catch(e){status.textContent='Локальний каталог не змінено повністю: помилка синхронізації — '+e.message+'. Перевір з’єднання та повтори.'}
+}
 function renderProductCatalog(){let q=(document.getElementById('productSearch')?.value||'').trim().toLowerCase(),a=productRecords().filter(x=>!q||productSearchText(x).includes(q)),el=document.getElementById('productCatalog');if(!el)return;if(!a.length){el.innerHTML='<p class="muted">'+(q?'За цим запитом виробів не знайдено.':'Каталог поки порожній. Додай перший виріб.')+'</p>';return}el.innerHTML=a.map(x=>`<article class="item"><b>${safeText(x.mark||x.name||'Без назви')}</b><div class="muted">${safeText(x.name||'')}${x.type?' • '+safeText(x.type):''}</div><div class="muted">${safeText(x.dimensions||'Розміри не вказані')} ${x.volume!==''?' • '+safeText(x.volume)+' м³/шт.':''} ${x.concreteGrade?' • бетон '+safeText(x.concreteGrade):''}</div><button class="btn" onclick="viewProductCard('${x.id}')">Відкрити картку</button></article>`).join('')}
 function showPage(id){if(butdetalPageStack[butdetalPageStack.length-1]!==id)butdetalPageStack.push(id);document.querySelectorAll('.page').forEach(x=>x.classList.add('hidden'));document.getElementById(id).classList.remove('hidden');document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));window.scrollTo(0,0)}
 function newProductCard(){['productId','productName','productMark','productType','productDimensions','productVolume','productConcreteGrade','productRebar','productNotes'].forEach(id=>document.getElementById(id).value='');document.getElementById('productPhotos').value='';document.getElementById('productDrawings').value='';document.getElementById('productEditorTitle').textContent='Нова картка виробу';document.getElementById('productEditorStatus').textContent='';showPage('productEditor')}
