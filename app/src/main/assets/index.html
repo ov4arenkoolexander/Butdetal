@@ -53,7 +53,7 @@ footer{text-align:center;color:#8390a0;font-size:12px;padding:24px}
 <button class="tab active" onclick="showTab('home',this)">Головна</button>
 <button class="tab" onclick="showTab('concrete',this)">Об’єм бетону</button>
 <button class="tab" onclick="showTab('steel',this)">Арматура</button>
-<button class="tab" onclick="showTab('tables',this)">Таблиці</button>
+<button class="tab" onclick="showTab('catalog',this);renderProductCatalog()">Каталог</button>
 <button class="tab" onclick="showTab('formulas',this)">Формули</button>
 <button class="tab" onclick="showTab('archive',this)">Фото й креслення</button>
 <button class="tab" onclick="showTab('series',this);loadSeriesCatalog()">Каталог серій</button>
@@ -66,17 +66,19 @@ footer{text-align:center;color:#8390a0;font-size:12px;padding:24px}
 <button class="btn secondary" onclick="exportSelectedExcel()">⬇ Експортувати вибране в Excel</button><div id="excelExportStatus" class="muted" aria-live="polite"></div><label>Імпорт книги Excel (.xlsx)</label><input id="excelFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"><button class="btn" onclick="previewButdetalExcel()">Перевірити файл та показати попередній перегляд</button><div id="excelPreview" class="muted" aria-live="polite"></div><div id="excelActions" class="hidden"><button class="btn" onclick="applyButdetalExcel(true)">Оновити дублікати та додати нові</button><button class="btn secondary" onclick="applyButdetalExcel(false)">Пропустити дублікати, додати лише нові</button></div><button class="btn secondary" onclick="downloadExcelTemplate()">Завантажити порожній шаблон Excel</button></div>
 <button class="shortcut" onclick="navTo('concrete')"><span class="shortcut-icon">▰</span><b>Бетон</b><small>Об’єм конструкцій</small></button>
 <button class="shortcut" onclick="navTo('steel')"><span class="shortcut-icon">⌁</span><b>Арматура</b><small>Маса та довжина</small></button>
-<button class="shortcut" onclick="navTo('tables')"><span class="shortcut-icon">▦</span><b>Таблиці</b><small>Довідкові дані</small></button>
 <button class="shortcut" onclick="navTo('archive')"><span class="shortcut-icon">▧</span><b>Архів</b><small>Фото й креслення</small></button>
 </div>
-<div class="card catalog-home"><div class="section-heading"><div><span class="eyebrow">ОБЛІК ВИРОБІВ</span><h2>Каталог виробів</h2></div><span class="section-symbol">▤</span></div><p class="muted">Шукай за назвою, маркуванням, типом або розмірами. Відкривай картки з фото та кресленнями.</p><input id="productSearch" class="search" placeholder="Наприклад: ПК 60-12-8, плита, 2400 мм" oninput="renderProductCatalog()"><button class="btn" onclick="newProductCard()">＋ Додати виріб до каталогу</button><div id="productCatalog"></div></div>
+
 <div class="card"><div class="section-heading"><div><span class="eyebrow">ІНСТРУМЕНТИ</span><h2>Швидкі розрахунки</h2></div><span class="section-symbol">⌗</span></div><div class="row">
 <button class="tool-tile" onclick="navTo('concrete')"><span class="tool-art">▰</span><b>Об’єм бетону</b><small>Плита · стрічка · колона</small></button>
 <button class="tool-tile" onclick="navTo('steel')"><span class="tool-art">⌁</span><b>Маса арматури</b><small>Діаметр · довжина · кількість</small></button>
 </div></div>
-<div class="card"><div class="section-heading"><div><span class="eyebrow">ДОВІДКОВІ МАТЕРІАЛИ</span><h2>База знань</h2></div><span class="section-symbol">▥</span></div><div class="item" onclick="navTo('tables')"><b>Таблиці та нормативи</b><div class="muted">Маса сталі, одиниці та довідкові значення →</div></div><div class="item" onclick="navTo('formulas')"><b>Формули</b><div class="muted">Площа, об’єм і розрахункові залежності →</div></div><div class="item" onclick="navTo('archive')"><b>Фото й креслення</b><div class="muted">Окремий архів матеріалів підприємства →</div></div></div>
+<div class="card"><div class="section-heading"><div><span class="eyebrow">ДОВІДКОВІ МАТЕРІАЛИ</span><h2>База знань</h2></div><span class="section-symbol">▥</span></div><div class="item" onclick="navTo('formulas')"><b>Формули</b><div class="muted">Площа, об’єм і розрахункові залежності →</div></div><div class="item" onclick="navTo('archive')"><b>Фото й креслення</b><div class="muted">Окремий архів матеріалів підприємства →</div></div></div>
 <div class="card"><div class="section-heading"><h2>Синхронізація</h2><span class="online-dot"></span></div><p class="muted">Спільна база підприємства. Після підключення інтернету можна оновити дані.</p><div class="sync-line"><span id="syncStatus">Очікує синхронізації</span></div><button class="btn secondary" onclick="syncButdetalRecords()">⟳ Синхронізувати каталог і файли</button></div>
 <div class="warning">Довідник допомагає з обліком і довідковими обчисленнями, але не замінює робочий проєкт конструктора та чинні будівельні норми.</div>
+</section>
+<section id="catalog" class="page hidden">
+<div class="card catalog-home"><div class="section-heading"><div><span class="eyebrow">ОБЛІК ВИРОБІВ</span><h2>Каталог виробів</h2></div><span class="section-symbol">▤</span></div><p class="muted">Шукай за назвою, маркуванням, типом або розмірами. Відкривай картки з фото та кресленнями.</p><input id="productSearch" class="search" placeholder="Наприклад: ПК 60-12-8, плита, 2400 мм" oninput="renderProductCatalog()"><button class="btn" onclick="newProductCard()">＋ Додати виріб до каталогу</button><div id="productCatalog"></div></div>
 </section>
 <section id="productEditor" class="page hidden">
 <div class="card"><h2 id="productEditorTitle">Нова картка виробу</h2><input id="productId" type="hidden">
