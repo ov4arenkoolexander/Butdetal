@@ -93,9 +93,32 @@ public final class SeriesCatalogManager {
             File catalogRoot = findCatalogRoot(staging);
             if (catalogRoot == null) catalogRoot = staging;
             File destination = new File(baseDir, "Каталог");
-            if (destination.exists()) deleteTree(destination);
-            if (!catalogRoot.renameTo(destination)) {
-                copyTree(catalogRoot, destination);
+            File backup = new File(baseDir, "_Каталог_backup_" + System.currentTimeMillis());
+            boolean hadOld = destination.exists();
+            boolean movedOld = false;
+            boolean installed = false;
+            try {
+                // Keep the previous catalog intact until the new one is fully installed.
+                if (hadOld) {
+                    if (!destination.renameTo(backup)) {
+                        copyTree(destination, backup);
+                        deleteTree(destination);
+                    }
+                    movedOld = true;
+                }
+                if (!catalogRoot.renameTo(destination)) {
+                    copyTree(catalogRoot, destination);
+                }
+                installed = destination.isDirectory();
+                if (!installed) throw new IOException("Не вдалося встановити новий каталог");
+                if (movedOld) deleteTree(backup);
+            } catch (Exception installError) {
+                // Roll back to the previous catalog if installation failed.
+                if (destination.exists()) deleteTree(destination);
+                if (movedOld && backup.exists()) {
+                    if (!backup.renameTo(destination)) copyTree(backup, destination);
+                }
+                throw installError;
             }
             success = true;
             JSONObject result = new JSONObject();
