@@ -481,19 +481,26 @@ public class MainActivity extends Activity {
         }
         @JavascriptInterface public String downloadAndInstall(String url) {
             try {
-                if(url==null || !url.startsWith("https://github.com/")) return "Неприпустиме посилання на оновлення.";
+                if(url==null || !url.startsWith("https://github.com/") || !url.toLowerCase(Locale.ROOT).endsWith(".apk")) return "Неприпустиме посилання на APK оновлення.";
                 if(Build.VERSION.SDK_INT>=26 && !getPackageManager().canRequestPackageInstalls()) {
+                    getSharedPreferences("butdetal_update_state",MODE_PRIVATE).edit().putString("pending_url",url).apply();
                     Intent settings=new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,Uri.parse("package:"+getPackageName()));
-                    startActivity(settings); return "ДОЗВІЛ_ПОТРІБЕН";
+                    settings.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(settings);
+                    return "ДОЗВІЛ_ПОТРІБЕН";
                 }
                 if(downloadManager==null) downloadManager=(DownloadManager)getSystemService(DOWNLOAD_SERVICE);
+                File target=new File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),"BUTDETAL-update.apk");
+                if(target.exists() && !target.delete()) throw new IOException("Не вдалося очистити попередній APK");
                 DownloadManager.Request request=new DownloadManager.Request(Uri.parse(url));
                 request.setTitle("Оновлення BUTDETAL");
-                request.setDescription("Завантаження нової версії застосунку");
+                request.setDescription("Завантаження APK. Після завершення відкриється встановлення.");
+                request.setMimeType("application/vnd.android.package-archive");
                 request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
                 request.setAllowedOverMetered(true); request.setAllowedOverRoaming(false);
                 request.setDestinationInExternalFilesDir(MainActivity.this,Environment.DIRECTORY_DOWNLOADS,"BUTDETAL-update.apk");
                 updateDownloadId=downloadManager.enqueue(request);
+                getSharedPreferences("butdetal_update_state",MODE_PRIVATE).edit().putLong("download_id",updateDownloadId).remove("pending_url").apply();
                 return "ЗАВАНТАЖЕННЯ_ПОЧАТО";
             } catch(Exception e) { return "Помилка оновлення: "+e.getMessage(); }
         }
@@ -517,6 +524,7 @@ public class MainActivity extends Activity {
         webView.setBackgroundColor(0xFF0B1420);setContentView(webView);
         folder("drawings");folder("products");pdfFolder();
         downloadManager=(DownloadManager)getSystemService(DOWNLOAD_SERVICE);
+        updateDownloadId=getSharedPreferences("butdetal_update_state",MODE_PRIVATE).getLong("download_id",-1);
         updateReceiver=new BroadcastReceiver(){
             @Override public void onReceive(Context context,Intent intent){
                 if(!DownloadManager.ACTION_DOWNLOAD_COMPLETE.equals(intent.getAction())) return;
@@ -540,10 +548,26 @@ public class MainActivity extends Activity {
         try{
             File f=new File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),"BUTDETAL-update.apk");
             if(!f.exists() || f.length()<100000) throw new IOException("Завантажений APK відсутній або пошкоджений");
+            PackageInfo apkInfo=getPackageManager().getPackageArchiveInfo(f.getAbsolutePath(),0);
+            if(apkInfo==null || !getPackageName().equals(apkInfo.packageName)) throw new IOException("APK не належить BUTDETAL або файл пошкоджений");
+            getSharedPreferences("butdetal_update_state",MODE_PRIVATE).edit().remove("download_id").apply();
+            updateDownloadId=-1;
             Uri uri=FileProvider.getUriForFile(this,getPackageName()+".provider",f);
             Intent i=new Intent(Intent.ACTION_VIEW); i.setDataAndType(uri,"application/vnd.android.package-archive");
             i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION|Intent.FLAG_ACTIVITY_NEW_TASK); startActivity(i);
         }catch(Exception e){ if(webView!=null)webView.evaluateJavascript("window.onNativeUpdateResult&&window.onNativeUpdateResult("+JSONObject.quote("Не вдалося відкрити інсталятор: "+e.getMessage())+")",null); }
+    }
+    @Override protected void onResume() {
+        super.onResume();
+        if(Build.VERSION.SDK_INT>=26 && androidStorage!=null && getPackageManager().canRequestPackageInstalls()) {
+            android.content.SharedPreferences prefs=getSharedPreferences("butdetal_update_state",MODE_PRIVATE);
+            String pending=prefs.getString("pending_url",null);
+            if(pending!=null && !pending.isEmpty()) {
+                prefs.edit().remove("pending_url").apply();
+                String result=androidStorage.downloadAndInstall(pending);
+                if(webView!=null) webView.post(() -> webView.evaluateJavascript("window.onNativeUpdateResult&&window.onNativeUpdateResult("+JSONObject.quote(result.equals("ЗАВАНТАЖЕННЯ_ПОЧАТО")?"Дозвіл надано. Завантажую оновлення…":result)+")",null));
+            }
+        }
     }
     @Override public void onBackPressed() {
         if (webView != null && webView.canGoBack()) {
