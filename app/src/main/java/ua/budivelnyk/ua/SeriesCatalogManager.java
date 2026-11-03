@@ -27,6 +27,14 @@ public final class SeriesCatalogManager {
 
     public File getBaseDir() { return baseDir; }
 
+    public void clearCatalog() throws IOException {
+        File catalog = new File(baseDir, "Каталог");
+        if (catalog.exists()) {
+            deleteTree(catalog);
+            if (catalog.exists()) throw new IOException("Не вдалося повністю видалити каталог серій");
+        }
+    }
+
     public JSONObject importZip(Uri uri) throws Exception {
         if (!baseDir.exists() && !baseDir.mkdirs()) throw new IOException("Не вдалося створити каталог серій");
         File staging = new File(baseDir, "_import_" + System.currentTimeMillis());
