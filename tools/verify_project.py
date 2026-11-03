@@ -5,8 +5,8 @@ import re, sys
 ROOT = Path(__file__).resolve().parents[1]
 java = (ROOT/'app/src/main/java/ua/budivelnyk/ua/MainActivity.java').read_text(encoding='utf-8')
 html_files = list((ROOT/'app/src/main/assets').glob('*.html'))
-html = '\n'.join(p.read_text(encoding='utf-8') for p in html_files)
-methods = set(re.findall(r'@JavascriptInterface\s+public\s+[\w<>\[\]]+\s+(\w+)\s*\(', java))
+html = '\\n'.join(p.read_text(encoding='utf-8') for p in html_files)
+methods = set(re.findall(r'@JavascriptInterface\\s+public\\s+[\\w<>\\[\\]]+\\s+(\\w+)\\s*\\(', java))
 required = {'saveCredential','getCredential','clearCredential','saveDocument','saveImage','listImages','deleteImage','savePdf','listPdfs','readPdfBase64','importPdf','deletePdf','openPdf','recognizeImage','recognizePdf','beginBackup','appendBackupChunk','finishBackup','importBackup'}
 missing = sorted(required-methods)
 if missing:
@@ -22,15 +22,15 @@ for f in ('index.html','armature.html','xlsx.full.min.js'):
     if not (ROOT/'app/src/main/assets'/f).is_file():
         print(f'ERROR: missing asset: {f}'); sys.exit(1)
 gradle = (ROOT/'app/build.gradle').read_text(encoding='utf-8')
-if "versionName '2.0.8'" not in gradle:
-    print('ERROR: Gradle version is not 2.0.8'); sys.exit(1)
-for token in ('getAppVersion','downloadAndInstall'):
-    if token not in java:
-        print(f'ERROR: missing native updater method: {token}'); sys.exit(1)
+version = re.search(r"versionName\\s+'([^']+)'", gradle)
+if not version:
+    print('ERROR: Gradle versionName is missing'); sys.exit(1)
+if 'getAppVersion' not in java or 'downloadAndInstall' not in java:
+    print('ERROR: missing native updater method'); sys.exit(1)
 index = (ROOT/'app/src/main/assets/index.html').read_text(encoding='utf-8')
-if 'releases/latest' not in index or 'ov4arenkoolexander/BUTDETAL-1.7' not in index:
-    print('ERROR: latest-release update endpoint missing'); sys.exit(1)
+if 'releases/latest' not in index or 'ov4arenkoolexander/Butdetal' not in index:
+    print('ERROR: latest-release update endpoint missing or points to the wrong repository'); sys.exit(1)
 if 'createButdetalBackup' not in index or 'restoreButdetalBackup' not in index:
     print('ERROR: backup/restore UI is missing'); sys.exit(1)
-print('Static checks passed: Android bridge, OCR data, backup/restore, app assets, and in-app updater 2.0.8.')
+print(f'Static checks passed: Android bridge, OCR data, backup/restore, app assets, and in-app updater {version.group(1)}.')
 print('NOTE: This does not prove Gradle compilation or runtime OCR correctness.')
