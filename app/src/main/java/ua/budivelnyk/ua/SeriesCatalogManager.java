@@ -46,7 +46,7 @@ public final class SeriesCatalogManager {
             }
             // Read through the ZIP central directory rather than a streaming inflater.
             // This avoids truncated ZLIB stream errors when a provider returns a non-seekable stream.
-            try (java.util.zip.ZipFile zip = new java.util.zip.ZipFile(archive)) {
+            try (java.util.zip.ZipFile zip = new java.util.zip.ZipFile(archive, java.nio.charset.Charset.forName("CP866"))) {
                 Enumeration<? extends ZipEntry> it = zip.entries();
                 byte[] buffer = new byte[32768];
                 while (it.hasMoreElements()) {
