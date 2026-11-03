@@ -177,6 +177,10 @@ public class MainActivity extends Activity {
             try { return seriesCatalogManager.listSeries(query).toString(); }
             catch (Exception e) { return "[]"; }
         }
+        @JavascriptInterface public String clearSeriesCatalog() {
+            try { seriesCatalogManager.clearCatalog(); return "OK"; }
+            catch (Exception e) { return "Помилка очищення каталогу серій: " + e.getMessage(); }
+        }
         @JavascriptInterface public String listSeriesPages(String pdfRelativePath) {
             try { return seriesCatalogManager.listPages(pdfRelativePath).toString(); }
             catch (Exception e) { return "[]"; }
