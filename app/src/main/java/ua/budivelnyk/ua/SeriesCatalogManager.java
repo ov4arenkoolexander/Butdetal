@@ -182,6 +182,30 @@ public final class SeriesCatalogManager {
         return out;
     }
 
+    /** Save prior sync state to distinguish remote deletions from new local folders. */
+    public JSONArray getKnownSyncFolders() {
+        try {
+            JSONArray parsed=new JSONArray(context.getSharedPreferences("butdetal_series_sync",Context.MODE_PRIVATE).getString("known_folders","[]")),clean=new JSONArray();
+            Set<String> seen=new HashSet<>();
+            for(int i=0;i<parsed.length();i++){String n=parsed.optString(i,"").trim();if(!n.isEmpty()&&!n.equals(".")&&!n.equals("..")&&!n.contains("/")&&!n.contains("\\")&&!n.startsWith("_")&&seen.add(n))clean.put(n);}
+            return clean;
+        }catch(Exception e){return new JSONArray();}
+    }
+    public boolean setKnownSyncFolders(String json) {
+        try {
+            JSONArray incoming=new JSONArray(json==null?"[]":json),clean=new JSONArray();Set<String> seen=new HashSet<>();
+            for(int i=0;i<incoming.length();i++){String n=incoming.optString(i,"").trim();if(!n.isEmpty()&&!n.equals(".")&&!n.equals("..")&&!n.contains("/")&&!n.contains("\\")&&!n.startsWith("_")&&seen.add(n))clean.put(n);}
+            return context.getSharedPreferences("butdetal_series_sync",Context.MODE_PRIVATE).edit().putString("known_folders",clean.toString()).commit();
+        }catch(Exception e){return false;}
+    }
+    public boolean deleteSyncFolder(String name) throws IOException {
+        if(name==null||name.trim().isEmpty()||name.contains("/")||name.contains("\\")||name.equals("..")||name.startsWith("_"))throw new IOException("Некоректна назва папки серії");
+        File root=new File(baseDir,"Каталог"),folder=safeResolve(root,name);
+        if(folder==null)throw new IOException("Небезпечний шлях до папки серії");
+        if(folder.exists()){deleteTree(folder);if(folder.exists())throw new IOException("Не вдалося видалити папку серії");}
+        return true;
+    }
+
     private long newestModified(File dir) {
         long newest = dir.lastModified();
         File[] children = dir.listFiles();
