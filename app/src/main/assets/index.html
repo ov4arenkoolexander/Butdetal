@@ -184,7 +184,7 @@ async function syncSeriesCatalog(){
     const info=JSON.parse(merged);
     showSeriesStatus('Дані із сервера додано: '+(info.added||0)+' файлів; конфліктні копії: '+(info.conflicts||0).toString()+'. Завантажую об’єднаний каталог…',true);
    }
-  }else if(get.status!==404){let detail='';try{detail=(await get.json()).message||''}catch(e){}throw Error(detail||'Помилка завантаження з сервера HTTP '+get.status)}
+  }else{let detail='';try{const body=await get.json();detail=body.message||body.error||body.error_description||''}catch(e){}const cloudMissing=get.status===404||(get.status===400&&/object not found|not found/i.test(detail));if(!cloudMissing)throw Error(detail||'Помилка завантаження з сервера HTTP '+get.status)}
   const local=AndroidStorage.exportSeriesCatalogZipBase64();
   if(local&&local.indexOf('ERROR:')===0)throw Error(local.replace(/^ERROR:/,''));
   if(local){
