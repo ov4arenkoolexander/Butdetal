@@ -45,3 +45,42 @@ on conflict (id) do update set
   public = false,
   file_size_limit = excluded.file_size_limit,
   allowed_mime_types = excluded.allowed_mime_types;
+
+
+-- Shared series ZIP catalogue: one common prefix for all authenticated users.
+-- Keep legacy per-user paths readable but use shared/series/folders for new sync.
+drop policy if exists "butdetal_series_shared_insert" on storage.objects;
+create policy "butdetal_series_shared_insert"
+on storage.objects for insert to authenticated
+with check (
+  bucket_id = 'butdetal-archive'
+  and (storage.foldername(name))[1] = 'shared'
+  and (storage.foldername(name))[2] = 'series'
+  and (storage.foldername(name))[3] = 'folders'
+);
+
+drop policy if exists "butdetal_series_shared_update" on storage.objects;
+create policy "butdetal_series_shared_update"
+on storage.objects for update to authenticated
+using (
+  bucket_id = 'butdetal-archive'
+  and (storage.foldername(name))[1] = 'shared'
+  and (storage.foldername(name))[2] = 'series'
+  and (storage.foldername(name))[3] = 'folders'
+)
+with check (
+  bucket_id = 'butdetal-archive'
+  and (storage.foldername(name))[1] = 'shared'
+  and (storage.foldername(name))[2] = 'series'
+  and (storage.foldername(name))[3] = 'folders'
+);
+
+drop policy if exists "butdetal_series_shared_delete" on storage.objects;
+create policy "butdetal_series_shared_delete"
+on storage.objects for delete to authenticated
+using (
+  bucket_id = 'butdetal-archive'
+  and (storage.foldername(name))[1] = 'shared'
+  and (storage.foldername(name))[2] = 'series'
+  and (storage.foldername(name))[3] = 'folders'
+);
