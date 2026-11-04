@@ -24,7 +24,7 @@ table{width:100%;border-collapse:collapse;font-size:14px;color:#e4e9ef}td,th{tex
 .item{padding:12px 0;border-bottom:1px solid var(--line)}.item:last-child{border:0}
 footer{text-align:center;color:#8390a0;font-size:12px;padding:24px}
 .folder-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:12px 0}.folder-tile{border:1px solid #3a4a5f;border-radius:15px;padding:14px;background:#202d3d;text-align:left;color:var(--text)}.folder-tile b{display:block;margin:7px 0;color:#fff}.folder-tile span{font-size:12px;color:#aab6c5}.photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(135px,1fr));gap:10px;margin-top:12px}.photo-card{border:1px solid #39485b;border-radius:13px;padding:8px;background:#1c2837;min-width:0}.photo-card img{width:100%;height:125px;object-fit:contain;background:#101925;border-radius:8px;display:block}.photo-card h3{margin:8px 0 4px;overflow-wrap:anywhere}.photo-actions{display:flex;gap:6px}.photo-actions button{font-size:12px;padding:9px 5px;margin-top:8px}
-.auth-panel{max-width:520px;margin:20px auto;padding:20px;background:linear-gradient(145deg,#1d2938,#121b27);border:1px solid #3c4c61;border-radius:20px;box-shadow:0 14px 35px #0006}.auth-panel h2{margin:0 0 8px;color:#ffc400}.auth-panel .btn{margin-top:12px}.auth-status{font-size:13px;line-height:1.45;margin-top:12px;color:var(--muted)}.auth-user{font-size:13px;color:#dcebe5;margin-top:8px}.auth-actions{display:flex;gap:8px}.auth-actions .btn{flex:1}
+.auth-panel{position:relative;z-index:5;pointer-events:auto;touch-action:manipulation;max-width:520px;margin:20px auto;padding:20px;background:linear-gradient(145deg,#1d2938,#121b27);border:1px solid #3c4c61;border-radius:20px;box-shadow:0 14px 35px #0006}.auth-panel h2{margin:0 0 8px;color:#ffc400}.auth-panel .btn{margin-top:12px}.auth-status{font-size:13px;line-height:1.45;margin-top:12px;color:var(--muted)}.auth-user{font-size:13px;color:#dcebe5;margin-top:8px}.auth-actions{display:flex;gap:8px}.auth-actions .btn{flex:1}
 @media(min-width:600px){header{padding-left:max(22px,calc((100% - 720px)/2));padding-right:max(22px,calc((100% - 720px)/2))}}
 
 .home-welcome{position:relative;overflow:hidden;padding:23px 20px;margin:2px 0 16px;border-radius:21px;background:linear-gradient(115deg,#27384b,#172536 68%,#334052);border:1px solid #526176;box-shadow:0 12px 28px #0005}.home-welcome:after{content:"";position:absolute;width:180px;height:180px;border:24px solid #ffc40017;border-radius:50%;right:-55px;top:-55px}.eyebrow{font-size:10px;letter-spacing:1.8px;font-weight:800;color:#ffc400}.home-welcome h2{font-size:27px;line-height:1.12;margin:10px 0}.home-welcome h2 em{font-style:normal;color:#ffd044}.home-welcome p{font-size:13px;color:#c4ced9;max-width:245px;margin:0}.home-mark{position:absolute;right:24px;bottom:18px;font-size:56px;font-weight:900;color:#ffffff13}.home-mark span{color:#ffc400; font-size:30px}.home-shortcuts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:14px}.home-shortcuts>.card:first-child{grid-column:1/-1;min-width:0}.home-shortcuts>.card:first-child .btn{white-space:normal;overflow-wrap:anywhere}.shortcut{min-width:0;padding:12px 5px;border:1px solid #39495d;border-radius:14px;background:linear-gradient(145deg,#202e3e,#151f2c);color:#f3f5f7;text-align:center}.shortcut-icon{display:block;font-size:23px;color:#ffc400;margin-bottom:5px}.shortcut b,.shortcut small{display:block}.shortcut b{font-size:12px}.shortcut small{font-size:9px;color:#aeb9c7;margin-top:4px}.section-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}.section-heading h2{margin:4px 0 0}.section-symbol{font-size:25px;color:#ffc400;border:1px solid #66551e;background:#3a321d;border-radius:11px;padding:5px 10px}.tool-tile{border:1px solid #405168;border-radius:14px;background:#202d3d;color:#f4f6f8;padding:13px 9px;text-align:left}.tool-tile b,.tool-tile small{display:block}.tool-tile b{font-size:13px;margin:7px 0 4px}.tool-tile small{font-size:10px;color:#abb8c8}.tool-art{font-size:25px;color:#ffc400}.online-dot{width:9px;height:9px;background:#35c875;border-radius:50%;box-shadow:0 0 0 5px #35c87520}.sync-line{border:1px solid #35465b;border-radius:10px;padding:10px 12px;color:#d7e1ec;font-size:13px;background:#101a26}.catalog-home .search{margin-top:6px}.item[onclick]{cursor:pointer}.item[onclick]:active{background:#ffffff08}
@@ -39,12 +39,12 @@ footer{text-align:center;color:#8390a0;font-size:12px;padding:24px}
 <p class="muted">Підключення до спільної бази підприємства. Після входу каталог, фото, креслення та PDF синхронізуються зі спільним архівом. Локальні копії залишаються доступними офлайн.</p>
 <label>Адреса Supabase</label><input id="sbUrl" inputmode="url" placeholder="https://ваш-проєкт.supabase.co">
 <label>Публічний ключ (sb_publishable_…)</label><input id="sbKey" autocomplete="off" placeholder="sb_publishable_…">
-<button class="btn secondary" onclick="saveSupabaseConfig()">Зберегти налаштування сервера</button>
+<button id="saveSupabaseConfigButton" type="button" class="btn secondary">Зберегти налаштування сервера</button>
 <div class="row"><div><label>Email для входу</label><input id="authEmail" type="email" autocomplete="username" placeholder="name@example.com"></div><div><label>Пароль</label><input id="authPassword" type="password" autocomplete="current-password" placeholder="Пароль"></div></div>
 <label>Ваше ім’я для журналу змін (для працівників)</label><input id="authDisplayName" maxlength="80" placeholder="Наприклад: Іван"><label class="remember-label"><input id="rememberUser" type="checkbox"> Запам’ятовувати користувача</label>
 <label class="remember-label"><input id="rememberServer" type="checkbox" checked> Запам’ятовувати сервер на цьому телефоні</label>
 <label class="remember-label"><input id="rememberPassword" type="checkbox"> Безпечно запам’ятати пароль на цьому телефоні</label>
-<button class="btn" onclick="signInButdetal()">Увійти</button>
+<button id="signInButdetalButton" type="button" class="btn">Увійти</button>
 <div id="authStatus" class="auth-status" role="status"></div>
 </section>
 <main id="appMain" class="hidden">
@@ -141,6 +141,16 @@ footer{text-align:center;color:#8390a0;font-size:12px;padding:24px}
 </main>
 <script src="xlsx.full.min.js"></script>
 <script>
+// Fail-safe for WebView click handling and visible JS errors on the login screen.
+function bindAuthActions(){
+ const save=document.getElementById('saveSupabaseConfigButton');
+ const login=document.getElementById('signInButdetalButton');
+ if(save&&!save.dataset.bound){save.dataset.bound='1';save.addEventListener('click',()=>{try{saveSupabaseConfig()}catch(e){authMsg('Не вдалося зберегти налаштування: '+(e.message||e),true)}})}
+ if(login&&!login.dataset.bound){login.dataset.bound='1';login.addEventListener('click',()=>{Promise.resolve().then(()=>signInButdetal()).catch(e=>authMsg('Помилка входу: '+(e.message||e),true))})}
+}
+document.addEventListener('DOMContentLoaded',bindAuthActions,{once:true});
+window.addEventListener('error',e=>{const el=document.getElementById('authStatus');if(el&&document.getElementById('authGate')&&!document.getElementById('authGate').classList.contains('hidden'))el.textContent='Помилка інтерфейсу: '+(e.message||'невідома помилка')});
+window.addEventListener('unhandledrejection',e=>{const el=document.getElementById('authStatus');if(el&&document.getElementById('authGate')&&!document.getElementById('authGate').classList.contains('hidden'))el.textContent='Помилка: '+(e.reason&&e.reason.message?e.reason.message:String(e.reason||'невідома помилка'))});
 let seriesItems=[];
 let seriesPages=[];
 function requestProtectedClear(kind){
