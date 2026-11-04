@@ -173,6 +173,14 @@ public class MainActivity extends Activity {
                 return "PICKER_OPENED";
             } catch (Exception e) { return "Помилка відкриття вибору ZIP: " + e.getMessage(); }
         }
+        @JavascriptInterface public String exportSeriesCatalogZipBase64() {
+            try { return seriesCatalogManager.exportCatalogZipBase64(); }
+            catch (Exception e) { return "ERROR:" + e.getMessage(); }
+        }
+        @JavascriptInterface public String mergeSeriesCatalogZipBase64(String base64) {
+            try { return seriesCatalogManager.mergeCatalogZipBase64(base64).toString(); }
+            catch (Exception e) { return "ERROR:" + e.getMessage(); }
+        }
         @JavascriptInterface public String listSeriesCatalog(String query) {
             try { return seriesCatalogManager.listSeries(query).toString(); }
             catch (Exception e) { return "[]"; }
