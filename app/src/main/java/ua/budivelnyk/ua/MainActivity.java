@@ -196,6 +196,17 @@ public class MainActivity extends Activity {
             try { return seriesCatalogManager.listSeries(query).toString(); }
             catch (Exception e) { return "[]"; }
         }
+        @JavascriptInterface public String getKnownSeriesSyncFolders() {
+            try { return seriesCatalogManager.getKnownSyncFolders().toString(); } catch (Exception e) { return "[]"; }
+        }
+        @JavascriptInterface public String setKnownSeriesSyncFolders(String json) {
+            try { return seriesCatalogManager.setKnownSyncFolders(json) ? "OK" : "ERROR:Не вдалося зберегти стан синхронізації"; }
+            catch (Exception e) { return "ERROR:" + e.getMessage(); }
+        }
+        @JavascriptInterface public String deleteSeriesSyncFolder(String name) {
+            try { seriesCatalogManager.deleteSyncFolder(name); return "OK"; }
+            catch (Exception e) { return "ERROR:" + e.getMessage(); }
+        }
         @JavascriptInterface public String clearSeriesCatalog() {
             try { seriesCatalogManager.clearCatalog(); return "OK"; }
             catch (Exception e) { return "Помилка очищення каталогу серій: " + e.getMessage(); }
