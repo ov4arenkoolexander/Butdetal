@@ -341,6 +341,24 @@ function saveSupabaseConfig(){const url=document.getElementById('sbUrl').value.t
 async function signInButdetal(){const cfg=getSbConfig(),email=document.getElementById('authEmail').value.trim(),password=document.getElementById('authPassword').value,displayName=document.getElementById('authDisplayName').value.trim();if(!cfg.url||!cfg.key){authMsg('Спочатку введи адресу Supabase і публічний ключ та збережи їх.',true);return}if(!email||!password){authMsg('Введи email і пароль.',true);return}authMsg('Перевіряю облікові дані…');try{const r=await fetch(cfg.url+'/auth/v1/token?grant_type=password',{method:'POST',headers:{'Content-Type':'application/json','apikey':cfg.key},body:JSON.stringify({email,password})});const d=await r.json();if(!r.ok)throw Error(d.msg||d.message||d.error_description||'Невірний email або пароль.');const p=await fetch(cfg.url+'/rest/v1/profiles?select=role,display_name&user_id=eq.'+encodeURIComponent(d.user.id),{headers:{'apikey':cfg.key,'Authorization':'Bearer '+d.access_token}});const rows=await p.json();if(!p.ok||!rows.length)throw Error('Не вдалося прочитати роль користувача. Перевір SQL-міграцію та RLS.');const profile=rows[0];if(profile.role==='colleague'&&!displayName)throw Error('Працівнику потрібно вказати своє ім’я для журналу змін.');if(document.getElementById('rememberUser').checked)localStorage.setItem('butdetal_remember_user_v1',JSON.stringify({email,displayName}));else localStorage.removeItem('butdetal_remember_user_v1');if(document.getElementById('rememberPassword').checked){if(!window.AndroidStorage||!AndroidStorage.saveCredential)throw Error('Безпечне сховище доступне лише в Android-застосунку.');const saved=AndroidStorage.saveCredential(email,password);if(saved!=='OK')throw Error(saved||'Не вдалося зберегти пароль.')}else if(window.AndroidStorage&&AndroidStorage.clearCredential)AndroidStorage.clearCredential();localStorage.setItem('butdetal_session_v1',JSON.stringify({access_token:d.access_token,refresh_token:d.refresh_token,expires_at:Date.now()+(d.expires_in||3600)*1000,user_id:d.user.id,email:d.user.email,role:profile.role,display_name:profile.role==='admin'?(profile.display_name||'Адміністратор'):displayName}));document.getElementById('authGate').classList.add('hidden');document.getElementById('appMain').classList.remove('hidden');authMsg('');const h=document.querySelector('header p');if(h)h.textContent=(profile.role==='admin'?'Адміністратор':'Працівник')+' • '+(profile.role==='admin'?(profile.display_name||'Адміністратор'):displayName);let out=document.getElementById('signOutButton');if(!out){out=document.createElement('button');out.id='signOutButton';out.className='btn secondary';out.textContent='Вийти';out.onclick=signOutButdetal;document.querySelector('header').appendChild(out)}renderArchive();renderProductCatalog();syncButdetalRecords().catch(e=>authMsg('Вхід успішний, але синхронізація поки недоступна: '+e.message,true))}catch(e){authMsg(e.message||'Помилка входу.',true)}}
 
 
+// Persist the login only when the user explicitly enables the secure remember option.
+function persistRememberedCredential(){
+ const remember=document.getElementById('rememberPassword');
+ if(!remember||!window.AndroidStorage)return;
+ if(!remember.checked){
+  if(AndroidStorage.clearCredential)AndroidStorage.clearCredential();
+  return;
+ }
+ const email=document.getElementById('authEmail').value.trim();
+ const password=document.getElementById('authPassword').value;
+ if(email&&password&&AndroidStorage.saveCredential){
+  const result=AndroidStorage.saveCredential(email,password);
+  if(result!=='OK')authMsg(result||'Не вдалося зберегти пароль у захищеному сховищі.',true);
+ }
+}
+document.getElementById('rememberPassword').addEventListener('change',persistRememberedCredential);
+document.getElementById('authEmail').addEventListener('input',()=>{if(document.getElementById('rememberPassword').checked)persistRememberedCredential()});
+document.getElementById('authPassword').addEventListener('input',()=>{if(document.getElementById('rememberPassword').checked)persistRememberedCredential()});
 // Синхронізація каталогу та спільного архіву файлів Supabase Storage.
 function currentButdetalSession(){try{return JSON.parse(localStorage.getItem('butdetal_session_v1')||'null')}catch(e){return null}}
 async function sbRequest(path,options={}){const cfg=getSbConfig(),session=currentButdetalSession();if(!cfg.url||!cfg.key||!session?.access_token)throw Error('Немає активного входу або налаштувань сервера.');const headers={apikey:cfg.key,Authorization:'Bearer '+session.access_token,'Content-Type':'application/json',...(options.headers||{})};const r=await fetch(cfg.url+path,{...options,headers});if(!r.ok){let t='HTTP '+r.status;try{const j=await r.json();t=j.message||j.details||j.hint||t}catch(e){}throw Error(t)}if(r.status===204)return null;const txt=await r.text();return txt?JSON.parse(txt):null}
