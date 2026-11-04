@@ -167,33 +167,45 @@ function showSeriesStatus(message,ok){const el=document.getElementById('seriesIm
 async function syncSeriesCatalog(){
  const session=currentButdetalSession();
  if(!session){showSeriesStatus('Спочатку увійди до BUTDETAL.',false);return}
- if(!seriesNative()||typeof AndroidStorage.exportSeriesCatalogZipBase64!=='function'||typeof AndroidStorage.mergeSeriesCatalogZipBase64!=='function'){showSeriesStatus('Синхронізація серій доступна у встановленій Android-версії.',false);return}
- const cfg=getSbConfig(),objectPath=session.user_id+'/series/catalog.zip';
- const url=cfg.url+'/storage/v1/object/butdetal-archive/'+objectPath.split('/').map(encodeURIComponent).join('/');
- showSeriesStatus('Синхронізую каталог серій із сервером…',true);
+ if(!seriesNative()||typeof AndroidStorage.listSeriesSyncFolders!=='function'||typeof AndroidStorage.exportSeriesFolderZipBase64!=='function'||typeof AndroidStorage.mergeSeriesFolderZipBase64!=='function'){showSeriesStatus('Синхронізація папок серій доступна після оновлення Android-застосунку.',false);return}
+ const cfg=getSbConfig(),root=session.user_id+'/series/folders/';
+ const headers={apikey:cfg.key,Authorization:'Bearer '+session.access_token};
+ const encodePath=p=>p.split('/').map(encodeURIComponent).join('/');
+ showSeriesStatus('Отримую список локальних папок серій…',true);
  try{
-  let cloudBase64='';
-  const get=await fetch(url,{headers:{apikey:cfg.key,Authorization:'Bearer '+session.access_token}});
-  if(get.ok){
-   const blob=await get.blob();
-   const dataUrl=await blobDataUrl(blob);
-   cloudBase64=(dataUrl.split(',')[1]||'');
-   if(cloudBase64){
-    const merged=AndroidStorage.mergeSeriesCatalogZipBase64(cloudBase64);
-    if(!merged||merged.indexOf('ERROR:')===0)throw Error((merged||'Помилка об’єднання').replace(/^ERROR:/,''));
-    const info=JSON.parse(merged);
-    showSeriesStatus('Дані із сервера додано: '+(info.added||0)+' файлів; конфліктні копії: '+(info.conflicts||0).toString()+'. Завантажую об’єднаний каталог…',true);
+  const folders=JSON.parse(AndroidStorage.listSeriesSyncFolders()||'[]');
+  if(!folders.length){showSeriesStatus('У каталозі не знайдено папок серій для синхронізації.',false);return}
+  let totalAdded=0,totalConflicts=0,completed=0;
+  for(const folder of folders){
+   const name=String(folder.name||'');
+   if(!name||name==='.'||name==='..'||name.includes('/')||name.includes('\\'))continue;
+   const objectPath=root+encodeURIComponent(name)+'.zip';
+   const url=cfg.url+'/storage/v1/object/butdetal-archive/'+encodePath(objectPath);
+   showSeriesStatus('Синхронізація серії '+name+' ('+(completed+1)+'/'+folders.length+')…',true);
+   const get=await fetch(url,{headers});
+   if(get.ok){
+    const blob=await get.blob(),dataUrl=await blobDataUrl(blob),b64=dataUrl.split(',')[1]||'';
+    if(b64){
+     const merged=AndroidStorage.mergeSeriesFolderZipBase64(name,b64);
+     if(!merged||merged.indexOf('ERROR:')===0)throw Error('Серія '+name+': '+(merged||'помилка об’єднання').replace(/^ERROR:/,''));
+     const info=JSON.parse(merged);totalAdded+=Number(info.added||0);totalConflicts+=Number(info.conflicts||0);
+    }
+   }else{
+    let detail='';try{const body=await get.json();detail=body.message||body.error||body.error_description||''}catch(e){}
+    const missing=get.status===404||(get.status===400&&/object not found|not found/i.test(detail));
+    if(!missing)throw Error('Серія '+name+': помилка завантаження HTTP '+get.status+' '+detail);
    }
-  }else{let detail='';try{const body=await get.json();detail=body.message||body.error||body.error_description||''}catch(e){}const cloudMissing=get.status===404||(get.status===400&&/object not found|not found/i.test(detail));if(!cloudMissing)throw Error(detail||'Помилка завантаження з сервера HTTP '+get.status)}
-  const local=AndroidStorage.exportSeriesCatalogZipBase64();
-  if(local&&local.indexOf('ERROR:')===0)throw Error(local.replace(/^ERROR:/,''));
-  if(local){
-   const raw=atob(local),bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
-   await storageUpload(objectPath,new Blob([bytes],{type:'application/zip'}),'application/zip');
+   const local=AndroidStorage.exportSeriesFolderZipBase64(name);
+   if(local&&local.indexOf('ERROR:')===0)throw Error('Серія '+name+': '+local.replace(/^ERROR:/,''));
+   if(local){
+    const raw=atob(local),bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
+    await storageUpload(objectPath,new Blob([bytes],{type:'application/zip'}),'application/zip');
+   }
+   completed++;
   }
   loadSeriesCatalog();
-  showSeriesStatus('Синхронізацію серій завершено. Локальні файли збережені; сервер отримав об’єднаний архів.',true);
- }catch(e){showSeriesStatus('Синхронізація не завершена: '+(e&&e.message?e.message:'помилка мережі')+'. Натисни синхронізацію ще раз після перевірки з’єднання.',false)}
+  showSeriesStatus('Синхронізацію папок завершено: '+completed+' серій; додано '+totalAdded+' файлів; конфліктів '+totalConflicts+'. Локальні дані збережені.',true);
+ }catch(e){showSeriesStatus('Синхронізація не завершена: '+(e&&e.message?e.message:'помилка мережі')+'. Перевір з’єднання та повтори.',false)}
 }
 function importSeriesZip(){if(!seriesNative()){showSeriesStatus('Імпорт ZIP доступний у встановленому Android-застосунку.',false);return}const r=AndroidStorage.chooseSeriesArchive();if(r!=='PICKER_OPENED')showSeriesStatus(r,false);else showSeriesStatus('Вибери ZIP-архів у файловому менеджері телефона…',true)}
 window.onSeriesImportResult=function(result){if(result&&result.ok){showSeriesStatus('Імпорт завершено: '+result.pdfCount+' PDF, '+result.imageCount+' зображень, '+result.textCount+' текстових файлів.',true);loadSeriesCatalog()}else showSeriesStatus((result&&result.message)||'Імпорт не виконано.',false)};
