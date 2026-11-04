@@ -181,6 +181,12 @@ function storageObjectUrl(bucket,path){
  const cfg=getSbConfig();
  return cfg.url.replace(/\/$/,'')+'/storage/v1/object/'+bucket+'/'+encodeStoragePath(path);
 }
+function storageSafeFolderKey(name){
+ const map={'а':'a','б':'b','в':'v','г':'h','ґ':'g','д':'d','е':'e','є':'ye','ж':'zh','з':'z','и':'y','і':'i','ї':'yi','й':'y','к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r','с':'s','т':'t','у':'u','ф':'f','х':'kh','ц':'ts','ч':'ch','ш':'sh','щ':'shch','ь':'','ю':'yu','я':'ya','ъ':'','ы':'y','э':'e','ё':'yo'};
+ let value=String(name||'').trim().toLowerCase().split('').map(ch=>map[ch]!==undefined?map[ch]:ch).join('');
+ value=value.normalize('NFKD').replace(/[\\u0300-\\u036f]/g,'').replace(/[^a-z0-9._!-]/g,'-').replace(/-+/g,'-').replace(/^[.-]+|[.-]+$/g,'');
+ return value||'series-folder';
+}
 async function syncSeriesCatalog(){
  const session=currentButdetalSession();
  if(!session){showSeriesStatus('Спочатку увійди до BUTDETAL.',false);return}
@@ -190,7 +196,11 @@ async function syncSeriesCatalog(){
  showSeriesStatus('Зіставляю локальні та серверні папки серій…',true);
  try{
   const localFolders=JSON.parse(AndroidStorage.listSeriesSyncFolders()||'[]');
-  const localNames=new Set(localFolders.map(f=>String(f.name||'').trim()).filter(n=>n&&n!=='.'&&n!=='..'&&!n.includes('/')&&!n.includes('\\')));
+  const localNameByKey=new Map();
+  for(const f of localFolders){
+   const name=String(f.name||'').trim();
+   if(name&&name!=='.'&&name!=='..'&&!name.includes('/')&&!name.includes('\\'))localNameByKey.set(storageSafeFolderKey(name),name);
+  }
   const listUrl=cfg.url.replace(/\/$/,'')+'/storage/v1/object/list/butdetal-archive';
   const remoteItems=[];
   const pageSize=1000;
@@ -211,12 +221,13 @@ async function syncSeriesCatalog(){
     if(base&&!base.includes('/')&&!base.includes('\\'))remoteByBase.set(base,objectName);
    }
   }
-  const allNames=Array.from(new Set([...localNames,...remoteByBase.keys()])).sort((a,b)=>a.localeCompare(b,'uk'));
-  if(!allNames.length){showSeriesStatus('Немає папок серій для синхронізації.',false);return}
+  const allKeys=Array.from(new Set([...localNameByKey.keys(),...remoteByBase.keys()])).sort((a,b)=>a.localeCompare(b,'uk'));
+  if(!allKeys.length){showSeriesStatus('Немає папок серій для синхронізації.',false);return}
   let totalAdded=0,totalConflicts=0,completed=0;
   const failures=[];
-  for(const name of allNames){
-   const objectName=remoteByBase.get(name)||name+'.zip';
+  for(const key of allKeys){
+   const name=localNameByKey.get(key)||key;
+   const objectName=remoteByBase.get(key)||key+'.zip';
    const objectPath=prefix+objectName;
    showSeriesStatus('Синхронізація серії '+name+' ('+(completed+1)+'/'+allNames.length+')…',true);
    try{
