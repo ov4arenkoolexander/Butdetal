@@ -179,7 +179,7 @@ async function syncSeriesCatalog(){
   for(const folder of folders){
    const name=String(folder.name||'');
    if(!name||name==='.'||name==='..'||name.includes('/')||name.includes('\\'))continue;
-   const objectPath=root+encodeURIComponent(name)+'.zip';
+   const objectPath=root+name+'.zip';
    const url=cfg.url+'/storage/v1/object/butdetal-archive/'+encodePath(objectPath);
    showSeriesStatus('Синхронізація серії '+name+' ('+(completed+1)+'/'+folders.length+')…',true);
    const get=await fetch(url,{headers});
