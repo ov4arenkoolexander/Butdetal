@@ -4,12 +4,14 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.net.Uri;
 import android.os.Environment;
+import android.util.Base64;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import java.io.*;
 import java.util.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
 
 /** Offline ZIP importer and searchable index for construction series. */
 public final class SeriesCatalogManager {
@@ -158,6 +160,88 @@ public final class SeriesCatalogManager {
                 byte[] b = new byte[32768]; int n;
                 while ((n = in.read(b)) != -1) out.write(b, 0, n);
             }
+        }
+    }
+
+
+    /** Export the current catalog as a bounded Base64 ZIP for authenticated cloud sync. */
+    public String exportCatalogZipBase64() throws Exception {
+        File root = new File(baseDir, "Каталог");
+        if (!root.isDirectory()) return "";
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        try (ZipOutputStream zip = new ZipOutputStream(new BufferedOutputStream(bytes))) { zipTree(root, root, zip); }
+        byte[] raw = bytes.toByteArray();
+        if (raw.length > 60L * 1024L * 1024L) throw new IOException("Архів серій більший за ліміт синхронізації 60 МБ.");
+        return Base64.encodeToString(raw, Base64.NO_WRAP);
+    }
+
+    private void zipTree(File root, File current, ZipOutputStream zip) throws IOException {
+        File[] children = current.listFiles();
+        if (children == null) return;
+        Arrays.sort(children, (a,b) -> a.getName().compareToIgnoreCase(b.getName()));
+        byte[] buffer = new byte[32768];
+        for (File child : children) {
+            if (child.getName().startsWith("_")) continue;
+            if (child.isDirectory()) { zipTree(root, child, zip); continue; }
+            String rel = root.toURI().relativize(child.toURI()).getPath();
+            zip.putNextEntry(new ZipEntry(rel));
+            try (InputStream in = new BufferedInputStream(new FileInputStream(child))) {
+                int n; while ((n = in.read(buffer)) != -1) zip.write(buffer, 0, n);
+            }
+            zip.closeEntry();
+        }
+    }
+
+    /** Add cloud catalog files without clearing local files; divergent same-name files are retained as conflict copies. */
+    public JSONObject mergeCatalogZipBase64(String base64) throws Exception {
+        if (base64 == null || base64.isEmpty()) {
+            JSONObject empty = new JSONObject(); empty.put("added", 0); empty.put("conflicts", 0); return empty;
+        }
+        if (base64.length() > 85L * 1024L * 1024L) throw new IOException("Отриманий ZIP перевищує ліміт 60 МБ.");
+        byte[] raw = Base64.decode(base64, Base64.DEFAULT);
+        File root = new File(baseDir, "Каталог");
+        if (!root.exists() && !root.mkdirs()) throw new IOException("Не вдалося створити каталог серій.");
+        File archive = File.createTempFile("butdetal-series-sync-", ".zip", context.getCacheDir());
+        int added = 0, conflicts = 0; long total = 0; int entries = 0;
+        try {
+            try (OutputStream out = new BufferedOutputStream(new FileOutputStream(archive))) { out.write(raw); }
+            try (java.util.zip.ZipFile zip = new java.util.zip.ZipFile(archive, java.nio.charset.Charset.forName("CP866"))) {
+                Enumeration<? extends ZipEntry> it = zip.entries(); byte[] buffer = new byte[32768];
+                while (it.hasMoreElements()) {
+                    ZipEntry entry = it.nextElement();
+                    if (++entries > MAX_ENTRIES) throw new IOException("Забагато файлів у синхронізації.");
+                    String name = entry.getName().replace((char)92, '/');
+                    if (entry.isDirectory() || name.startsWith("/") || name.contains("../") || name.equals("..") || name.contains("/..")) continue;
+                    String lower = name.toLowerCase(Locale.ROOT);
+                    if (!(lower.endsWith(".pdf") || lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".png") || lower.endsWith(".txt") || lower.endsWith(".json") || lower.endsWith(".csv"))) continue;
+                    File dest = new File(root, name);
+                    if (!dest.getCanonicalPath().startsWith(root.getCanonicalPath() + File.separator)) throw new IOException("Небезпечний шлях у ZIP.");
+                    File parent = dest.getParentFile();
+                    if (!parent.exists() && !parent.mkdirs()) throw new IOException("Не вдалося створити папку.");
+                    ByteArrayOutputStream fileData = new ByteArrayOutputStream();
+                    try (InputStream in = new BufferedInputStream(zip.getInputStream(entry))) {
+                        int n; while ((n = in.read(buffer)) != -1) { total += n; if (total > MAX_TOTAL_BYTES) throw new IOException("Дані перевищують 1,8 ГБ."); fileData.write(buffer, 0, n); }
+                    }
+                    byte[] incoming = fileData.toByteArray();
+                    if (dest.exists()) {
+                        if (Arrays.equals(readBytes(dest), incoming)) continue;
+                        String base = dest.getName(); int dot = base.lastIndexOf('.');
+                        String stem = dot > 0 ? base.substring(0, dot) : base, ext = dot > 0 ? base.substring(dot) : "";
+                        File conflict = new File(parent, stem + "__cloud_conflict_" + System.currentTimeMillis() + ext);
+                        int suffix = 2; while (conflict.exists()) conflict = new File(parent, stem + "__cloud_conflict_" + (System.currentTimeMillis() + suffix++) + ext);
+                        dest = conflict; conflicts++;
+                    }
+                    try (OutputStream out = new BufferedOutputStream(new FileOutputStream(dest))) { out.write(incoming); }
+                    added++;
+                }
+            }
+        } finally { if (archive.exists()) archive.delete(); }
+        JSONObject result = new JSONObject(); result.put("added", added); result.put("conflicts", conflicts); result.put("entries", entries); return result;
+    }
+
+    private byte[] readBytes(File file) throws IOException {
+        try (InputStream in = new BufferedInputStream(new FileInputStream(file)); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            byte[] b = new byte[32768]; int n; while ((n = in.read(b)) != -1) out.write(b, 0, n); return out.toByteArray();
         }
     }
 
