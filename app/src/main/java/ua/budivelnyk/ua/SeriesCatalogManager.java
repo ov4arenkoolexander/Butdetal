@@ -182,6 +182,30 @@ public final class SeriesCatalogManager {
         return out;
     }
 
+    /** Save prior sync state to distinguish remote deletions from new local folders. */
+    public JSONArray getKnownSyncFolders() {
+        try {
+            JSONArray parsed=new JSONArray(context.getSharedPreferences("butdetal_series_sync",Context.MODE_PRIVATE).getString("known_folders","[]")),clean=new JSONArray();
+            Set<String> seen=new HashSet<>();
+            for(int i=0;i<parsed.length();i++){String n=parsed.optString(i,"").trim();if(!n.isEmpty()&&!n.equals(".")&&!n.equals("..")&&!n.contains("/")&&!n.contains("\\")&&!n.startsWith("_")&&seen.add(n))clean.put(n);}
+            return clean;
+        }catch(Exception e){return new JSONArray();}
+    }
+    public boolean setKnownSyncFolders(String json) {
+        try {
+            JSONArray incoming=new JSONArray(json==null?"[]":json),clean=new JSONArray();Set<String> seen=new HashSet<>();
+            for(int i=0;i<incoming.length();i++){String n=incoming.optString(i,"").trim();if(!n.isEmpty()&&!n.equals(".")&&!n.equals("..")&&!n.contains("/")&&!n.contains("\\")&&!n.startsWith("_")&&seen.add(n))clean.put(n);}
+            return context.getSharedPreferences("butdetal_series_sync",Context.MODE_PRIVATE).edit().putString("known_folders",clean.toString()).commit();
+        }catch(Exception e){return false;}
+    }
+    public boolean deleteSyncFolder(String name) throws IOException {
+        if(name==null||name.trim().isEmpty()||name.contains("/")||name.contains("\\")||name.equals("..")||name.startsWith("_"))throw new IOException("Некоректна назва папки серії");
+        File root=new File(baseDir,"Каталог"),folder=safeResolve(root,name);
+        if(folder==null)throw new IOException("Небезпечний шлях до папки серії");
+        if(folder.exists()){deleteTree(folder);if(folder.exists())throw new IOException("Не вдалося видалити папку серії");}
+        return true;
+    }
+
     private long newestModified(File dir) {
         long newest = dir.lastModified();
         File[] children = dir.listFiles();
@@ -251,6 +275,7 @@ public final class SeriesCatalogManager {
                     if (f.isDirectory()) { mergeDirectory(f, dest); continue; }
                     if (Arrays.equals(readBytes(dest), readBytes(f))) continue;
                     String nm=f.getName(); int dot=nm.lastIndexOf('.'); String stem=dot>0?nm.substring(0,dot):nm, ext=dot>0?nm.substring(dot):"";
+                    if (hasIdenticalConflictCopy(targetRoot, stem, ext, f)) continue;
                     dest=new File(targetRoot,stem+"__cloud_conflict_"+System.currentTimeMillis()+ext); conflicts++;
                 }
                 if (f.isDirectory()) copyTree(f,dest);
@@ -259,6 +284,19 @@ public final class SeriesCatalogManager {
             }
         } finally { deleteTree(staging); if (archive.exists()) archive.delete(); }
         JSONObject result=new JSONObject(); result.put("added",added); result.put("conflicts",conflicts); result.put("entries",entries); return result;
+    }
+
+    /** Avoid generating a new conflict copy on every sync for identical incoming bytes. */
+    private boolean hasIdenticalConflictCopy(File directory, String stem, String ext, File incoming) throws IOException {
+        File[] files = directory.listFiles();
+        if (files == null) return false;
+        String prefix = stem + "__cloud_conflict_";
+        for (File candidate : files) {
+            String name = candidate.getName();
+            if (candidate.isFile() && name.startsWith(prefix) && name.endsWith(ext)
+                    && Arrays.equals(readBytes(candidate), readBytes(incoming))) return true;
+        }
+        return false;
     }
 
     private void mergeDirectory(File source, File target) throws IOException {
@@ -270,6 +308,7 @@ public final class SeriesCatalogManager {
             else if(!dest.exists()) try(InputStream in=new FileInputStream(child);OutputStream out=new FileOutputStream(dest)){byte[] b=new byte[32768];int n;while((n=in.read(b))!=-1)out.write(b,0,n);}
             else if(!Arrays.equals(readBytes(dest),readBytes(child))) {
                 String nm=child.getName();int dot=nm.lastIndexOf('.');String stem=dot>0?nm.substring(0,dot):nm,ext=dot>0?nm.substring(dot):"";
+                if (hasIdenticalConflictCopy(target, stem, ext, child)) continue;
                 File conflict=new File(target,stem+"__cloud_conflict_"+System.currentTimeMillis()+ext);
                 try(InputStream in=new FileInputStream(child);OutputStream out=new FileOutputStream(conflict)){byte[] b=new byte[32768];int n;while((n=in.read(b))!=-1)out.write(b,0,n);}
             }
