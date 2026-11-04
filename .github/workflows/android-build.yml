@@ -2,7 +2,7 @@ name: Android build
 
 on:
   push:
-    branches: ["main", "feature/series-catalog-import"]
+    branches: ["main", "feature/series-catalog-import", "fix/storage-ascii-series-keys"]
   pull_request:
     branches: ["main"]
 
