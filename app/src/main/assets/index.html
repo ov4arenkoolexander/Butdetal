@@ -176,10 +176,17 @@ async function syncSeriesCatalog(){
   const localFolders=JSON.parse(AndroidStorage.listSeriesSyncFolders()||'[]');
   const localNames=new Set(localFolders.map(f=>String(f.name||'')).filter(n=>n&&n!=='.'&&n!=='..'&&!n.includes('/')&&!n.includes('\\')));
   const listUrl=cfg.url+'/storage/v1/object/list/butdetal-archive';
-  const listRes=await fetch(listUrl,{method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({prefix:prefix,limit:1000,offset:0,sortBy:{column:'name',order:'asc'}})});
-  if(!listRes.ok)throw Error('Не вдалося отримати список серій із сервера (HTTP '+listRes.status+').');
-  const remoteItems=await listRes.json();
-  const remoteNames=new Set((Array.isArray(remoteItems)?remoteItems:[]).map(x=>String(x.name||'').replace(/\.zip$/i,'')).filter(n=>n&&n!=='.'&&n!=='..'&&!n.includes('/')&&!n.includes('\\')));
+  const remoteItems=[];
+  const pageSize=1000;
+  for(let offset=0;;offset+=pageSize){
+   const listRes=await fetch(listUrl,{method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({prefix:prefix,limit:pageSize,offset:offset,sortBy:{column:'name',order:'asc'}})});
+   if(!listRes.ok)throw Error('Не вдалося отримати список серій із сервера (HTTP '+listRes.status+').');
+   const page=await listRes.json();
+   if(!Array.isArray(page))throw Error('Сервер повернув некоректний список папок серій.');
+   remoteItems.push(...page);
+   if(page.length<pageSize)break;
+  }
+  const remoteNames=new Set(remoteItems.map(x=>String(x.name||'')).filter(n=>/\.zip$/i.test(n)).map(n=>n.replace(/\.zip$/i,'')).filter(n=>n&&n!=='.'&&n!=='..'&&!n.includes('/')&&!n.includes('\\')));
   const allNames=Array.from(new Set([...localNames,...remoteNames])).sort((a,b)=>a.localeCompare(b,'uk'));
   if(!allNames.length){showSeriesStatus('Немає папок серій для синхронізації.',false);return}
   let totalAdded=0,totalConflicts=0,completed=0;
