@@ -265,7 +265,7 @@ public class MainActivity extends Activity {
         }
         @JavascriptInterface public String saveCredential(String email,String password) {
             try { JSONObject o=new JSONObject();o.put("email",email);o.put("password",password);
-                getSharedPreferences("butdetal_secure_v1",MODE_PRIVATE).edit().putString("credential",encryptCredential(o.toString())).apply();return "OK";
+                boolean saved=getSharedPreferences("butdetal_secure_v1",MODE_PRIVATE).edit().putString("credential",encryptCredential(o.toString())).commit();return saved?"OK":"Не вдалося записати пароль у пам’ять телефону";
             } catch(Exception e){return "Помилка захищеного збереження: "+e.getMessage();}
         }
         @JavascriptInterface public String getCredential() {
@@ -273,7 +273,7 @@ public class MainActivity extends Activity {
             catch(Exception e){return "";}
         }
         @JavascriptInterface public String clearCredential() {
-            getSharedPreferences("butdetal_secure_v1",MODE_PRIVATE).edit().remove("credential").apply();return "OK";
+            boolean cleared=getSharedPreferences("butdetal_secure_v1",MODE_PRIVATE).edit().remove("credential").commit();return cleared?"OK":"Не вдалося видалити збережений пароль";
         }
         @JavascriptInterface public String saveDocument(String name,String mime,String base64) {
             try {
