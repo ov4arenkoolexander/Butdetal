@@ -164,7 +164,7 @@ if(kind==='series'){
 if(!seriesNative()||typeof AndroidStorage.clearSeriesCatalog!=='function'){alert('Функція очищення каталогу серій недоступна.');return;}
 const session=currentButdetalSession(),cfg=getSbConfig();
 if(!session||!cfg.url||!cfg.key)throw Error('Спочатку увійди до BUTDETAL і перевір налаштування сервера.');
-const prefix='shared/series/folders/',listUrl=cfg.url.replace(/\\/$/,'')+'/storage/v1/object/list/butdetal-archive';
+const prefix='shared/series/folders/',listUrl=cfg.url.replace(/\/+$/,'')+'/storage/v1/object/list/butdetal-archive';
 const headers={apikey:cfg.key,Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'};
 const remote=[];
 for(let offset=0;;offset+=500){
