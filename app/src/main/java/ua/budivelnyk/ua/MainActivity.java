@@ -176,8 +176,35 @@ public class MainActivity extends Activity {
                 }
             }
         }
-        String detail=lastError==null?"невідома помилка":lastError.getMessage();
-        throw new IOException("Tesseract не завантажив мовні моделі (ukr+rus+eng або окремі мови). "+detail,lastError);
+        // Fallback to ML Kit when Tesseract language data cannot initialize.
+        try {
+            return recognizeWithMlKit(bitmap);
+        } catch(Exception mlError) {
+            String detail=lastError==null?"невідома помилка":lastError.getMessage();
+            throw new IOException("Tesseract не завантажив мовні моделі: "+detail+
+                ". ML Kit OCR також завершився помилкою: "+mlError.getMessage(),mlError);
+        }
+    }
+
+    private String recognizeWithMlKit(Bitmap bitmap) throws Exception {
+        com.google.mlkit.vision.text.TextRecognizer cyrillic =
+            com.google.mlkit.vision.text.TextRecognition.getClient(
+                new com.google.mlkit.vision.text.cyrillic.CyrillicTextRecognizerOptions.Builder().build());
+        com.google.mlkit.vision.text.TextRecognizer latin =
+            com.google.mlkit.vision.text.TextRecognition.getClient(
+                new com.google.mlkit.vision.text.latin.LatinTextRecognizerOptions.Builder().build());
+        try {
+            com.google.mlkit.vision.common.InputImage image =
+                com.google.mlkit.vision.common.InputImage.fromBitmap(bitmap,0);
+            String cyrText=com.google.android.gms.tasks.Tasks.await(cyrillic.process(image)).getText();
+            String latinText=com.google.android.gms.tasks.Tasks.await(latin.process(image)).getText();
+            if(cyrText==null)cyrText="";
+            if(latinText==null)latinText="";
+            return cyrText.length()>=latinText.length()?cyrText.trim():latinText.trim();
+        } finally {
+            cyrillic.close();
+            latin.close();
+        }
     }
 
     private static final String CREDENTIAL_ALIAS = "butdetal_credential_key_v1";
