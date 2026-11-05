@@ -243,8 +243,8 @@ async function syncSeriesCatalog(){
     if(known&&!local&&remote){
      if(row.manifest){
       let manifest={};try{manifest=JSON.parse(await (await storageDownload(manifestPath)).text())}catch(e){}
-      const count=Math.max(0,Number(manifest.parts||0));
-      for(let i=0;i<count;i++)await storageDeleteObject(prefix+key+'.part'+String(i).padStart(5,'0'));
+      const count=Math.max(0,Number(manifest.parts||0)),generation=String(manifest.generation||'');
+      for(let i=0;i<count;i++)await storageDeleteObject(prefix+key+(generation?'.'+generation:'')+'.part'+String(i).padStart(5,'0'));
       await storageDeleteObject(manifestPath);
      }
      if(row.legacy)await storageDeleteObject(prefix+row.legacy);
@@ -255,8 +255,9 @@ async function syncSeriesCatalog(){
      const manifest=JSON.parse(await (await storageDownload(manifestPath)).text());
      if(!Number.isInteger(Number(manifest.parts))||Number(manifest.parts)<1||Number(manifest.parts)>10000)throw Error('Некоректний маніфест частин серії');
      const receivePath=AndroidStorage.beginSeriesSyncReceive();if(!receivePath||receivePath.indexOf('ERROR:')===0)throw Error((receivePath||'Не вдалося створити файл приймання').replace(/^ERROR:/,''));
+     const generation=String(manifest.generation||'');
      for(let i=0;i<Number(manifest.parts);i++){
-      const partPath=prefix+key+'.part'+String(i).padStart(5,'0'),partBlob=await storageDownload(partPath),base64=seriesBlobToBase64(await partBlob.arrayBuffer());
+      const partPath=prefix+key+(generation?'.'+generation:'')+'.part'+String(i).padStart(5,'0'),partBlob=await storageDownload(partPath),base64=seriesBlobToBase64(await partBlob.arrayBuffer());
       const appended=AndroidStorage.appendSeriesSyncReceiveChunk(receivePath,base64);if(appended!=='OK')throw Error((appended||'Не вдалося записати частину серії').replace(/^ERROR:/,''));
      }
      const merged=AndroidStorage.finishSeriesSyncReceive(name,receivePath);if(!merged||merged.indexOf('ERROR:')===0)throw Error((merged||'Помилка складання серії').replace(/^ERROR:/,''));
@@ -268,16 +269,20 @@ async function syncSeriesCatalog(){
     const exported=AndroidStorage.createSeriesSyncZip(name);if(!exported||exported.indexOf('ERROR:')===0)throw Error((exported||'Не вдалося підготувати ZIP серії').replace(/^ERROR:/,''));
     const archive=JSON.parse(exported),size=Number(archive.size||0),parts=Math.max(1,Math.ceil(size/chunkBytes));
     if(!archive.path||!Number.isFinite(size)||size<=0)throw Error('Android повернув некоректний ZIP для синхронізації');
-    let previousParts=0;
-    if(row.manifest){try{previousParts=Number(JSON.parse(await (await storageDownload(manifestPath)).text()).parts||0)}catch(e){}}
+    let previousManifest=null;
+    if(row.manifest){try{previousManifest=JSON.parse(await (await storageDownload(manifestPath)).text())}catch(e){}}
+    const generation=Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8);
     for(let i=0;i<parts;i++){
      const offset=i*chunkBytes,length=Math.min(chunkBytes,size-offset),b64=AndroidStorage.readSeriesSyncZipChunkBase64(archive.path,offset,length);
      if(!b64||b64.indexOf('ERROR:')===0)throw Error((b64||'Не вдалося прочитати частину ZIP').replace(/^ERROR:/,''));
-     await storageUpload(prefix+key+'.part'+String(i).padStart(5,'0'),seriesBlobFromBase64(b64),'application/octet-stream');
+     await storageUpload(prefix+key+'.'+generation+'.part'+String(i).padStart(5,'0'),seriesBlobFromBase64(b64),'application/octet-stream');
     }
-    const manifest={format:1,folder:name,size:size,parts:parts,chunkBytes:chunkBytes,updatedAt:new Date().toISOString()};
+    const manifest={format:1,folder:name,generation:generation,size:size,parts:parts,chunkBytes:chunkBytes,updatedAt:new Date().toISOString()};
     await storageUpload(manifestPath,new Blob([JSON.stringify(manifest)],{type:'application/json'}),'application/json');
-    for(let i=parts;i<previousParts;i++)await storageDeleteObject(prefix+key+'.part'+String(i).padStart(5,'0'));
+    if(previousManifest){
+     const oldGeneration=String(previousManifest.generation||''),oldCount=Math.max(0,Number(previousManifest.parts||0));
+     for(let i=0;i<oldCount;i++)await storageDeleteObject(prefix+key+(oldGeneration?'.'+oldGeneration:'')+'.part'+String(i).padStart(5,'0'));
+    }
     if(row.legacy)await storageDeleteObject(prefix+row.legacy);
     nextKnown.add(name);done++;
    }catch(e){errors.push(name+': '+(e&&e.message?e.message:'невідома помилка'))}
