@@ -220,6 +220,10 @@ public class MainActivity extends Activity {
             try { return seriesCatalogManager.listSeries(query).toString(); }
             catch (Exception e) { return "[]"; }
         }
+        @JavascriptInterface public String searchSeriesOcr(String query) {
+            try { return seriesCatalogManager.searchSeriesOcr(query).toString(); }
+            catch (Exception e) { return "[]"; }
+        }
         @JavascriptInterface public String getKnownSeriesSyncFolders() {
             try { return seriesCatalogManager.getKnownSyncFolders().toString(); } catch (Exception e) { return "[]"; }
         }
