@@ -18,8 +18,8 @@ android {
         applicationId 'ua.budivelnyk.ua'
         minSdk 23
         targetSdk 35
-        versionCode 45
-        versionName '2.0.41'
+        versionCode 46
+        versionName '2.0.42'
     }
     buildTypes {
         release {
@@ -31,6 +31,9 @@ android {
 
 dependencies {
     implementation 'com.rmtheis:tess-two:9.1.0'
+    // Bundled ML Kit text recognition engines: Latin and Cyrillic.
+    implementation 'com.google.mlkit:text-recognition:16.0.1'
+    implementation 'com.google.mlkit:text-recognition-cyrillic:16.0.1'
     implementation 'androidx.core:core:1.15.0'
     implementation 'com.tom-roush:pdfbox-android:2.0.27.0'
 }
