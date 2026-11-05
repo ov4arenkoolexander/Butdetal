@@ -184,6 +184,30 @@ public class MainActivity extends Activity {
             try { return seriesCatalogManager.mergeFolderZipBase64(folderName, base64).toString(); }
             catch (Exception e) { return "ERROR:" + e.getMessage(); }
         }
+        @JavascriptInterface public String createSeriesSyncZip(String folderName) {
+            try { return seriesCatalogManager.createSyncZip(folderName).toString(); }
+            catch (Exception e) { return "ERROR:" + e.getMessage(); }
+        }
+        @JavascriptInterface public String readSeriesSyncZipChunkBase64(String path, long offset, int length) {
+            try { return seriesCatalogManager.readSyncZipChunkBase64(path, offset, length); }
+            catch (Exception e) { return "ERROR:" + e.getMessage(); }
+        }
+        @JavascriptInterface public String beginSeriesSyncReceive() {
+            try { return seriesCatalogManager.beginSyncReceive(); }
+            catch (Exception e) { return "ERROR:" + e.getMessage(); }
+        }
+        @JavascriptInterface public String appendSeriesSyncReceiveChunk(String path, String base64) {
+            try { return seriesCatalogManager.appendSyncReceiveChunk(path, base64); }
+            catch (Exception e) { return "ERROR:" + e.getMessage(); }
+        }
+        @JavascriptInterface public String finishSeriesSyncReceive(String folderName, String path) {
+            try { return seriesCatalogManager.finishSyncReceive(folderName, path).toString(); }
+            catch (Exception e) { return "ERROR:" + e.getMessage(); }
+        }
+        @JavascriptInterface public String deleteSeriesSyncTempFile(String path) {
+            try { return seriesCatalogManager.deleteSyncTempFile(path); }
+            catch (Exception e) { return "ERROR:" + e.getMessage(); }
+        }
         @JavascriptInterface public String exportSeriesCatalogZipBase64() {
             try { return seriesCatalogManager.exportCatalogZipBase64(); }
             catch (Exception e) { return "ERROR:" + e.getMessage(); }
