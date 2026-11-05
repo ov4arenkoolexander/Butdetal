@@ -262,7 +262,9 @@ public class MainActivity extends Activity {
                         int height = Math.max(1, (int)(page.getHeight() * scale));
                         bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
                         bitmap.eraseColor(android.graphics.Color.WHITE);
-                        page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
+                        Matrix renderMatrix = new Matrix();
+                        renderMatrix.setScale(scale, scale);
+                        page.render(bitmap, null, renderMatrix, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
                         recognized.append("\n--- Сторінка ").append(i + 1).append(" ---\n");
                         recognized.append(recognizeBitmap(bitmap)).append("\n");
                     } finally {
