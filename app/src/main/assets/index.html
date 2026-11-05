@@ -290,7 +290,7 @@ async function syncSeriesCatalog(){
        pieceBlobs.push(seriesBlobFromBase64(b64));
       }
       const storagePart=new Blob(pieceBlobs,{type:'application/octet-stream'});
-      const partPath=prefix+key+'.'+generation+'.part'+String(i).padStart(5,'0)';
+      const partPath=prefix+key+'.'+generation+'.part'+String(i).padStart(5,'0');
       await storageUpload(partPath,storagePart,'application/octet-stream');
       uploadedPartPaths.push(partPath);
      }
