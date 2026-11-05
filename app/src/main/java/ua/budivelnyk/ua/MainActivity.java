@@ -299,39 +299,41 @@ public class MainActivity extends Activity {
             File source = seriesCatalogManager.resolve(relativePath);
             if (source == null || !source.isFile()) return "PDF не знайдено";
             StringBuilder recognized = new StringBuilder();
-            try (ParcelFileDescriptor pfd = ParcelFileDescriptor.open(source, ParcelFileDescriptor.MODE_READ_ONLY);
-                 PdfRenderer renderer = new PdfRenderer(pfd)) {
-                int count = Math.min(renderer.getPageCount(), 40);
-                for (int i = 0; i < count; i++) {
-                    PdfRenderer.Page page = renderer.openPage(i);
-                    Bitmap bitmap = null;
-                    try {
-                        float scale = Math.min(2.0f, 2200.0f / Math.max(page.getWidth(), page.getHeight()));
-                        int width = Math.max(1, (int)(page.getWidth() * scale));
-                        int height = Math.max(1, (int)(page.getHeight() * scale));
-                        bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
-                        bitmap.eraseColor(android.graphics.Color.WHITE);
-                        Matrix renderMatrix = new Matrix();
-                        renderMatrix.setScale(scale, scale);
-                        page.render(bitmap, null, renderMatrix, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
-                        recognized.append("\n--- Сторінка ").append(i + 1).append(" ---\n");
-                        recognized.append(recognizeBitmap(bitmap)).append("\n");
-                    } finally {
-                        if (bitmap != null && !bitmap.isRecycled()) bitmap.recycle();
-                        page.close();
+            try {
+                initializePdfText();
+                try (PDDocument document = PDDocument.load(source);
+                     ParcelFileDescriptor pfd = ParcelFileDescriptor.open(source, ParcelFileDescriptor.MODE_READ_ONLY);
+                     PdfRenderer renderer = new PdfRenderer(pfd)) {
+                    int count = Math.min(renderer.getPageCount(), 40);
+                    for (int i = 0; i < count; i++) {
+                        String pageText = extractPdfPageText(document, i);
+                        if (pageText.length() < 20) {
+                            try (PdfRenderer.Page page = renderer.openPage(i)) {
+                                float scale = Math.min(2.0f, 2200.0f / Math.max(page.getWidth(), page.getHeight()));
+                                int width = Math.max(1, (int)(page.getWidth() * scale));
+                                int height = Math.max(1, (int)(page.getHeight() * scale));
+                                Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+                                try {
+                                    bitmap.eraseColor(android.graphics.Color.WHITE);
+                                    Matrix matrix = new Matrix(); matrix.setScale(scale, scale);
+                                    page.render(bitmap, null, matrix, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
+                                    pageText = recognizeBitmap(bitmap);
+                                } finally { if (!bitmap.isRecycled()) bitmap.recycle(); }
+                            }
+                        }
+                        recognized.append("\\n--- Сторінка ").append(i + 1).append(" ---\\n")
+                            .append(pageText.isEmpty() ? "Текст не знайдено на цій сторінці." : pageText).append("\\n");
                     }
+                    if (renderer.getPageCount() > count) recognized.append("\\nОброблено перші ").append(count).append(" сторінок із ").append(renderer.getPageCount()).append(".");
                 }
-                if (renderer.getPageCount() > count) recognized.append("\\nOCR обробив перші ").append(count).append(" сторінок із ").append(renderer.getPageCount()).append(".");
                 String rel = relativePath.substring(0, relativePath.length() - 4) + ".txt";
                 File root = new File(seriesCatalogManager.getBaseDir(), "Каталог");
                 File target = new File(root, "Текст_для_пошуку/" + rel);
                 if (!target.getCanonicalPath().startsWith(root.getCanonicalPath() + File.separator)) return "Небезпечний шлях для текстового файлу";
                 File parent = target.getParentFile();
                 if (!parent.exists() && !parent.mkdirs()) return "Не вдалося створити папку OCR";
-                try (FileOutputStream out = new FileOutputStream(target)) {
-                    out.write(recognized.toString().getBytes(StandardCharsets.UTF_8));
-                }
-                return "OCR завершено: " + count + " сторінок. Текст додано до пошуку.";
+                try (FileOutputStream out = new FileOutputStream(target)) { out.write(recognized.toString().getBytes(StandardCharsets.UTF_8)); }
+                return "Оброблено PDF: текстовий шар + OCR для сканованих сторінок. Текст додано до пошуку.";
             } catch (Exception e) { return "Помилка OCR серії: " + e.getMessage(); }
         }
         @JavascriptInterface public int getSeriesPdfPageCount(String relativePath) {
@@ -458,43 +460,42 @@ public class MainActivity extends Activity {
             finally {if(bitmap!=null&&!bitmap.isRecycled())bitmap.recycle();}
         }
         @JavascriptInterface public String recognizePdf(String data,String languages) {
-            File tmp=null; ParcelFileDescriptor pfd=null; PdfRenderer renderer=null;
+            File tmp=null;
             StringBuilder result=new StringBuilder();
             try {
                 byte[] raw=decodeData(data);
                 tmp=File.createTempFile("butdetal_ocr_",".pdf",getCacheDir());
                 try(FileOutputStream out=new FileOutputStream(tmp)){out.write(raw);}
-                pfd=ParcelFileDescriptor.open(tmp,ParcelFileDescriptor.MODE_READ_ONLY);
-                renderer=new PdfRenderer(pfd);
-                int count=Math.min(renderer.getPageCount(),40);
-                if(count==0)return "OCR: PDF не містить сторінок.";
-                for(int i=0;i<count;i++){
-                    PdfRenderer.Page page=renderer.openPage(i);
-                    Bitmap bmp=null;
-                    try{
-                        float scale=Math.min(2.0f,2200.0f/Math.max(page.getWidth(),page.getHeight()));
-                        int w=Math.max(1,(int)(page.getWidth()*scale));
-                        int h=Math.max(1,(int)(page.getHeight()*scale));
-                        bmp=Bitmap.createBitmap(w,h,Bitmap.Config.ARGB_8888);
-                        bmp.eraseColor(android.graphics.Color.WHITE);
-                        page.render(bmp,null,null,PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
-                        String text=recognizeBitmap(bmp);
+                initializePdfText();
+                try (PDDocument document=PDDocument.load(tmp);
+                     ParcelFileDescriptor pfd=ParcelFileDescriptor.open(tmp,ParcelFileDescriptor.MODE_READ_ONLY);
+                     PdfRenderer renderer=new PdfRenderer(pfd)) {
+                    int count=Math.min(renderer.getPageCount(),40);
+                    if(count==0)return "PDF не містить сторінок.";
+                    for(int i=0;i<count;i++){
+                        String pageText=extractPdfPageText(document,i);
+                        if(pageText.length()<20){
+                            try(PdfRenderer.Page page=renderer.openPage(i)){
+                                float scale=Math.min(2.0f,2200.0f/Math.max(page.getWidth(),page.getHeight()));
+                                int w=Math.max(1,(int)(page.getWidth()*scale));
+                                int h=Math.max(1,(int)(page.getHeight()*scale));
+                                Bitmap bmp=Bitmap.createBitmap(w,h,Bitmap.Config.ARGB_8888);
+                                try{
+                                    bmp.eraseColor(android.graphics.Color.WHITE);
+                                    page.render(bmp,null,null,PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
+                                    pageText=recognizeBitmap(bmp);
+                                }finally{if(!bmp.isRecycled())bmp.recycle();}
+                            }
+                        }
                         result.append("\\n--- Сторінка ").append(i+1).append(" ---\\n");
-                        result.append(text.isEmpty()?"Текст не знайдено на цій сторінці.":text).append("\\n");
-                    } finally {
-                        if(bmp!=null&&!bmp.isRecycled())bmp.recycle();
-                        page.close();
+                        result.append(pageText.isEmpty()?"Текст не знайдено на цій сторінці.":pageText).append("\\n");
                     }
+                    if(renderer.getPageCount()>count)result.append("\\nОброблено перші ").append(count).append(" сторінок із ").append(renderer.getPageCount()).append(".");
                 }
-                if(renderer.getPageCount()>count)result.append("\\nOCR: оброблено перші ").append(count).append(" сторінок із ").append(renderer.getPageCount()).append(".");
                 return result.toString().trim();
             } catch(UnsatisfiedLinkError e){return "OCR не запустився: не завантажилася нативна бібліотека Tesseract ("+e.getMessage()+").";}
-              catch(Exception e){return "Помилка OCR PDF: "+e.getMessage();}
-            finally {
-                try{if(renderer!=null)renderer.close();}catch(Exception ignored){}
-                try{if(pfd!=null)pfd.close();}catch(Exception ignored){}
-                if(tmp!=null)tmp.delete();
-            }
+              catch(Exception e){return "Помилка обробки PDF: "+e.getMessage();}
+            finally {if(tmp!=null)tmp.delete();}
         }
         @JavascriptInterface public String savePdf(String name,String data,String title,String notes) {
             try{
