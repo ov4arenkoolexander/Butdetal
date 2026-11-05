@@ -22,6 +22,9 @@ import android.webkit.WebViewClient;
 import androidx.core.content.FileProvider;
 
 import com.googlecode.tesseract.android.TessBaseAPI;
+import com.tom_roush.pdfbox.android.PDFBoxResourceLoader;
+import com.tom_roush.pdfbox.pdmodel.PDDocument;
+import com.tom_roush.pdfbox.text.PDFTextStripper;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -134,6 +137,16 @@ public class MainActivity extends Activity {
                 throw new IOException("Мовний файл "+lang+" має неправильний розмір: "+target.length()+" із "+expected+" байт.");
         }
         return base;
+    }
+
+    private void initializePdfText() { PDFBoxResourceLoader.init(getApplicationContext()); }
+
+    private String extractPdfPageText(PDDocument document, int pageIndex) throws Exception {
+        PDFTextStripper stripper = new PDFTextStripper();
+        stripper.setStartPage(pageIndex + 1);
+        stripper.setEndPage(pageIndex + 1);
+        String text = stripper.getText(document);
+        return text == null ? "" : text.trim();
     }
 
     private String recognizeBitmap(Bitmap bitmap) throws Exception {
