@@ -283,6 +283,38 @@ public class MainActivity extends Activity {
                 return "OCR завершено: " + count + " сторінок. Текст додано до пошуку.";
             } catch (Exception e) { return "Помилка OCR серії: " + e.getMessage(); }
         }
+        @JavascriptInterface public int getSeriesPdfPageCount(String relativePath) {
+            try {
+                File f = seriesCatalogManager.resolve(relativePath);
+                if (f == null || !f.isFile()) return -1;
+                try (ParcelFileDescriptor pfd = ParcelFileDescriptor.open(f, ParcelFileDescriptor.MODE_READ_ONLY);
+                     PdfRenderer renderer = new PdfRenderer(pfd)) {
+                    return renderer.getPageCount();
+                }
+            } catch (Exception e) { return -1; }
+        }
+        @JavascriptInterface public String renderSeriesPdfPage(String relativePath, int pageIndex) {
+            try {
+                File f = seriesCatalogManager.resolve(relativePath);
+                if (f == null || !f.isFile()) return "";
+                try (ParcelFileDescriptor pfd = ParcelFileDescriptor.open(f, ParcelFileDescriptor.MODE_READ_ONLY);
+                     PdfRenderer renderer = new PdfRenderer(pfd)) {
+                    if (pageIndex < 0 || pageIndex >= renderer.getPageCount()) return "";
+                    try (PdfRenderer.Page page = renderer.openPage(pageIndex)) {
+                        final int maxWidth = 1500;
+                        float scale = Math.min(1.0f, maxWidth / (float) Math.max(1, page.getWidth()));
+                        int width = Math.max(1, Math.round(page.getWidth() * scale));
+                        int height = Math.max(1, Math.round(page.getHeight() * scale));
+                        Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+                        page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
+                        ByteArrayOutputStream out = new ByteArrayOutputStream();
+                        bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
+                        bitmap.recycle();
+                        return Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP);
+                    }
+                }
+            } catch (Exception e) { return ""; }
+        }
         @JavascriptInterface public String openSeriesPdf(String relativePath) {
             try {
                 File f = seriesCatalogManager.resolve(relativePath);
