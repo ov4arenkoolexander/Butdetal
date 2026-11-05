@@ -52,12 +52,12 @@ footer{text-align:center;color:#8390a0;font-size:12px;padding:24px}
 <div class="card"><b>Стан бази:</b> <span id="syncStatus" class="muted">Очікує синхронізації</span><button class="btn secondary" onclick="syncButdetalRecords()">Синхронізувати каталог</button></div>
 <div class="tabs">
 <button class="tab active" onclick="showTab('home',this)">Головна</button>
+<button class="tab" onclick="showTab('catalog',this);renderProductCatalog()">Каталог</button>
+<button class="tab" onclick="showTab('series',this);loadSeriesCatalog()">Каталог серій</button>
 <button class="tab" onclick="showTab('concrete',this)">Об’єм бетону</button>
 <button class="tab" onclick="showTab('steel',this)">Арматура</button>
-<button class="tab" onclick="showTab('catalog',this);renderProductCatalog()">Каталог</button>
 <button class="tab" onclick="showTab('formulas',this)">Формули</button>
 <button class="tab" onclick="showTab('archive',this)">Фото й креслення</button>
-<button class="tab" onclick="showTab('series',this);loadSeriesCatalog()">Каталог серій</button>
 <button class="tab" onclick="window.location.href='armature.html'">Схеми армування</button>
 </div>
 <section id="home" class="page">
