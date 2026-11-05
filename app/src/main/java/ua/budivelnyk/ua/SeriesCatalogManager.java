@@ -469,6 +469,55 @@ public final class SeriesCatalogManager {
         }
     }
 
+    /** Search OCR text from imported series and rank results by query-token coverage. */
+    public JSONArray searchSeriesOcr(String query) throws Exception {
+        JSONArray out = new JSONArray();
+        if (query == null || query.trim().isEmpty()) return out;
+        File root = new File(baseDir, "Каталог");
+        if (!root.isDirectory()) return out;
+        String normalized = query.toLowerCase(Locale.ROOT).replaceAll("[^\\p{L}\\p{N}]+", " ").trim();
+        String[] tokens = normalized.split("\\s+");
+        List<JSONObject> matches = new ArrayList<>();
+        searchOcrFiles(root, root, tokens, normalized, matches);
+        Collections.sort(matches, (a,b) -> Integer.compare(b.optInt("score"), a.optInt("score")));
+        for (int i=0; i<Math.min(12, matches.size()); i++) out.put(matches.get(i));
+        return out;
+    }
+
+    private void searchOcrFiles(File root, File dir, String[] tokens, String normalized, List<JSONObject> matches) throws Exception {
+        File[] files = dir.listFiles();
+        if (files == null) return;
+        for (File f : files) {
+            if (f.isDirectory()) { searchOcrFiles(root, f, tokens, normalized, matches); continue; }
+            if (!f.getName().toLowerCase(Locale.ROOT).endsWith(".pdf")) continue;
+            String rel = root.toURI().relativize(f.toURI()).getPath();
+            String textRel = rel.substring(0, rel.length()-4) + ".txt";
+            File ocr = new File(root, "Текст_для_пошуку/" + textRel);
+            if (!ocr.isFile() || ocr.length() > 2L*1024L*1024L) continue;
+            String content;
+            try (InputStream in = new FileInputStream(ocr); ByteArrayOutputStream data = new ByteArrayOutputStream()) {
+                byte[] b = new byte[8192]; int n;
+                while ((n=in.read(b))!=-1) data.write(b,0,n);
+                content = data.toString("UTF-8").toLowerCase(Locale.ROOT).replaceAll("[^\\p{L}\\p{N}]+", " ");
+            }
+            int score = 0, found = 0;
+            for (String token : tokens) {
+                if (token.length() < 2) continue;
+                if (content.contains(token)) { found++; score += token.length() >= 5 ? 3 : 1; }
+            }
+            if (found == 0) continue;
+            if (!normalized.isEmpty() && content.contains(normalized)) score += 5;
+            JSONObject item = new JSONObject();
+            item.put("title", f.getName().substring(0, f.getName().length()-4));
+            item.put("category", f.getParentFile().equals(root) ? "Інші серії" : f.getParentFile().getName());
+            item.put("pdf", rel);
+            item.put("score", score);
+            item.put("matchedTokens", found);
+            item.put("queryTokens", tokens.length);
+            matches.add(item);
+        }
+    }
+
     public JSONArray listSeries(String query) throws Exception {
         JSONArray out = new JSONArray();
         if (!baseDir.exists()) return out;
