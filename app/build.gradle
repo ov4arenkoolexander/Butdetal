@@ -18,8 +18,8 @@ android {
         applicationId 'ua.budivelnyk.ua'
         minSdk 23
         targetSdk 35
-        versionCode 43
-        versionName '2.0.39'
+        versionCode 44
+        versionName '2.0.40'
     }
     buildTypes {
         release {
@@ -32,4 +32,5 @@ android {
 dependencies {
     implementation 'com.rmtheis:tess-two:9.1.0'
     implementation 'androidx.core:core:1.15.0'
+    implementation 'com.tom-roush:pdfbox-android:2.0.27.0'
 }
