@@ -120,18 +120,32 @@ public class MainActivity extends Activity {
 
     private String recognizeBitmap(Bitmap bitmap) throws Exception {
         File base=ensureTessdata();
-        TessBaseAPI api=new TessBaseAPI();
-        boolean initialized=false;
-        try {
-            initialized=api.init(base.getAbsolutePath(),"ukr+rus+eng");
-            if(!initialized) throw new IOException("Tesseract не зміг завантажити ukr/rus/eng");
-            api.setPageSegMode(TessBaseAPI.PageSegMode.PSM_AUTO);
-            api.setImage(bitmap);
-            String result=api.getUTF8Text();
-            return result==null?"":result.trim();
-        } finally {
-            if(initialized) { api.clear(); api.end(); }
+        String[] languageModes={"ukr+rus+eng","ukr","rus","eng"};
+        Exception lastError=null;
+        for(String languageMode:languageModes) {
+            TessBaseAPI api=new TessBaseAPI();
+            boolean initialized=false;
+            try {
+                initialized=api.init(base.getAbsolutePath(),languageMode);
+                if(!initialized) {
+                    lastError=new IOException("Tesseract init повернув false для мов: "+languageMode);
+                    continue;
+                }
+                api.setPageSegMode(TessBaseAPI.PageSegMode.PSM_AUTO);
+                api.setImage(bitmap);
+                String result=api.getUTF8Text();
+                return result==null?"":result.trim();
+            } catch(Exception e) {
+                lastError=e;
+            } finally {
+                if(initialized) {
+                    try { api.clear(); } catch(Exception ignored) {}
+                    try { api.end(); } catch(Exception ignored) {}
+                }
+            }
         }
+        String detail=lastError==null?"невідома помилка":lastError.getMessage();
+        throw new IOException("Tesseract не завантажив мовні моделі (ukr+rus+eng або окремі мови). "+detail,lastError);
     }
 
     private static final String CREDENTIAL_ALIAS = "butdetal_credential_key_v1";
