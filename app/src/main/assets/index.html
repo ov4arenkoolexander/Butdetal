@@ -206,7 +206,7 @@ function seriesBlobToBase64(blobBytes){
 async function syncSeriesCatalog(){
  const session=currentButdetalSession();
  if(!session){showSeriesStatus('Спочатку увійди до BUTDETAL.',false);return}
- const bridge=['listSeriesSyncFolders','createSeriesSyncZip','readSeriesSyncZipChunkBase64','beginSeriesSyncReceive','appendSeriesSyncReceiveChunk','finishSeriesSyncReceive','getKnownSeriesSyncFolders','setKnownSeriesSyncFolders','deleteSeriesSyncFolder'];
+ const bridge=['listSeriesSyncFolders','createSeriesSyncZip','readSeriesSyncZipChunkBase64','beginSeriesSyncReceive','appendSeriesSyncReceiveChunk','finishSeriesSyncReceive','deleteSeriesSyncTempFile','getKnownSeriesSyncFolders','setKnownSeriesSyncFolders','deleteSeriesSyncFolder'];
  if(!seriesNative()||bridge.some(k=>typeof AndroidStorage[k]!=='function')){showSeriesStatus('Синхронізація папок серій доступна після оновлення Android-застосунку.',false);return}
  const cfg=getSbConfig(),prefix='shared/series/folders/',headers={apikey:cfg.key,Authorization:'Bearer '+session.access_token},chunkBytes=8*1024*1024;
  showSeriesStatus('Зіставляю локальні та серверні папки серій…',true);
@@ -255,13 +255,17 @@ async function syncSeriesCatalog(){
      const manifest=JSON.parse(await (await storageDownload(manifestPath)).text());
      if(!Number.isInteger(Number(manifest.parts))||Number(manifest.parts)<1||Number(manifest.parts)>10000)throw Error('Некоректний маніфест частин серії');
      const receivePath=AndroidStorage.beginSeriesSyncReceive();if(!receivePath||receivePath.indexOf('ERROR:')===0)throw Error((receivePath||'Не вдалося створити файл приймання').replace(/^ERROR:/,''));
-     const generation=String(manifest.generation||'');
-     for(let i=0;i<Number(manifest.parts);i++){
-      const partPath=prefix+key+(generation?'.'+generation:'')+'.part'+String(i).padStart(5,'0'),partBlob=await storageDownload(partPath),base64=seriesBlobToBase64(await partBlob.arrayBuffer());
-      const appended=AndroidStorage.appendSeriesSyncReceiveChunk(receivePath,base64);if(appended!=='OK')throw Error((appended||'Не вдалося записати частину серії').replace(/^ERROR:/,''));
-     }
-     const merged=AndroidStorage.finishSeriesSyncReceive(name,receivePath);if(!merged||merged.indexOf('ERROR:')===0)throw Error((merged||'Помилка складання серії').replace(/^ERROR:/,''));
-     const info=JSON.parse(merged);totalAdded+=Number(info.added||0);totalConflicts+=Number(info.conflicts||0);
+     try{
+      const generation=String(manifest.generation||'');let receivedSize=0;
+      for(let i=0;i<Number(manifest.parts);i++){
+       const partPath=prefix+key+(generation?'.'+generation:'')+'.part'+String(i).padStart(5,'0'),partBlob=await storageDownload(partPath),base64=seriesBlobToBase64(await partBlob.arrayBuffer());
+       receivedSize+=Number(partBlob.size||0);
+       const appended=AndroidStorage.appendSeriesSyncReceiveChunk(receivePath,base64);if(appended!=='OK')throw Error((appended||'Не вдалося записати частину серії').replace(/^ERROR:/,''));
+      }
+      if(manifest.size!=null&&receivedSize!==Number(manifest.size))throw Error('Розмір завантажених частин не збігається з маніфестом');
+      const merged=AndroidStorage.finishSeriesSyncReceive(name,receivePath);if(!merged||merged.indexOf('ERROR:')===0)throw Error((merged||'Помилка складання серії').replace(/^ERROR:/,''));
+      const info=JSON.parse(merged);totalAdded+=Number(info.added||0);totalConflicts+=Number(info.conflicts||0);
+     }catch(receiveError){try{AndroidStorage.deleteSeriesSyncTempFile(receivePath)}catch(cleanupError){}throw receiveError}
     }else if(row.legacy){
      const legacyBlob=await storageDownload(prefix+row.legacy),legacyData=await blobDataUrl(legacyBlob),legacyB64=legacyData.split(',')[1]||'';
      if(legacyB64){const merged=AndroidStorage.mergeSeriesFolderZipBase64(name,legacyB64);if(!merged||merged.indexOf('ERROR:')===0)throw Error((merged||'Помилка об’єднання').replace(/^ERROR:/,''));const info=JSON.parse(merged);totalAdded+=Number(info.added||0);totalConflicts+=Number(info.conflicts||0)}
@@ -271,20 +275,22 @@ async function syncSeriesCatalog(){
     if(!archive.path||!Number.isFinite(size)||size<=0)throw Error('Android повернув некоректний ZIP для синхронізації');
     let previousManifest=null;
     if(row.manifest){try{previousManifest=JSON.parse(await (await storageDownload(manifestPath)).text())}catch(e){}}
-    const generation=Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8);
-    for(let i=0;i<parts;i++){
-     const offset=i*chunkBytes,length=Math.min(chunkBytes,size-offset),b64=AndroidStorage.readSeriesSyncZipChunkBase64(archive.path,offset,length);
-     if(!b64||b64.indexOf('ERROR:')===0)throw Error((b64||'Не вдалося прочитати частину ZIP').replace(/^ERROR:/,''));
-     await storageUpload(prefix+key+'.'+generation+'.part'+String(i).padStart(5,'0'),seriesBlobFromBase64(b64),'application/octet-stream');
-    }
-    const manifest={format:1,folder:name,generation:generation,size:size,parts:parts,chunkBytes:chunkBytes,updatedAt:new Date().toISOString()};
-    await storageUpload(manifestPath,new Blob([JSON.stringify(manifest)],{type:'application/json'}),'application/json');
-    if(previousManifest){
-     const oldGeneration=String(previousManifest.generation||''),oldCount=Math.max(0,Number(previousManifest.parts||0));
-     for(let i=0;i<oldCount;i++)await storageDeleteObject(prefix+key+(oldGeneration?'.'+oldGeneration:'')+'.part'+String(i).padStart(5,'0'));
-    }
-    if(row.legacy)await storageDeleteObject(prefix+row.legacy);
-    nextKnown.add(name);done++;
+    try{
+     const generation=Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8);
+     for(let i=0;i<parts;i++){
+      const offset=i*chunkBytes,length=Math.min(chunkBytes,size-offset),b64=AndroidStorage.readSeriesSyncZipChunkBase64(archive.path,offset,length);
+      if(!b64||b64.indexOf('ERROR:')===0)throw Error((b64||'Не вдалося прочитати частину ZIP').replace(/^ERROR:/,''));
+      await storageUpload(prefix+key+'.'+generation+'.part'+String(i).padStart(5,'0'),seriesBlobFromBase64(b64),'application/octet-stream');
+     }
+     const manifest={format:1,folder:name,generation:generation,size:size,parts:parts,chunkBytes:chunkBytes,updatedAt:new Date().toISOString()};
+     await storageUpload(manifestPath,new Blob([JSON.stringify(manifest)],{type:'application/json'}),'application/json');
+     if(previousManifest){
+      const oldGeneration=String(previousManifest.generation||''),oldCount=Math.max(0,Number(previousManifest.parts||0));
+      for(let i=0;i<oldCount;i++)await storageDeleteObject(prefix+key+(oldGeneration?'.'+oldGeneration:'')+'.part'+String(i).padStart(5,'0'));
+     }
+     if(row.legacy)await storageDeleteObject(prefix+row.legacy);
+     nextKnown.add(name);done++;
+    }finally{try{AndroidStorage.deleteSeriesSyncTempFile(archive.path)}catch(cleanupError){}}
    }catch(e){errors.push(name+': '+(e&&e.message?e.message:'невідома помилка'))}
   }
   const saved=AndroidStorage.setKnownSeriesSyncFolders(JSON.stringify(Array.from(nextKnown)));if(saved!=='OK')throw Error((saved||'Не вдалося зберегти стан синхронізації').replace(/^ERROR:/,''));
