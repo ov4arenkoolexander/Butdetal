@@ -153,7 +153,7 @@ window.addEventListener('error',e=>{const el=document.getElementById('authStatus
 window.addEventListener('unhandledrejection',e=>{const el=document.getElementById('authStatus');if(el&&document.getElementById('authGate')&&!document.getElementById('authGate').classList.contains('hidden'))el.textContent='Помилка: '+(e.reason&&e.reason.message?e.reason.message:String(e.reason||'невідома помилка'))});
 let seriesItems=[];
 let seriesPages=[];
-function requestProtectedClear(kind){
+async function requestProtectedClear(kind){
 const label=kind==='series'?'каталог серій':'каталог виробів';
 const pass=prompt('Введи пароль для очищення:');
 if(pass===null)return;
@@ -162,15 +162,35 @@ if(!confirm('УВАГА! Очистити '+label+'? Цю дію не можна
 try{
 if(kind==='series'){
 if(!seriesNative()||typeof AndroidStorage.clearSeriesCatalog!=='function'){alert('Функція очищення каталогу серій недоступна.');return;}
-const r=AndroidStorage.clearSeriesCatalog();
-if(r!=='OK'){alert(r||'Не вдалося очистити каталог серій.');return;}
-loadSeriesCatalog();showSeriesStatus('Каталог серій очищено.',true);
+const session=currentButdetalSession(),cfg=getSbConfig();
+if(!session||!cfg.url||!cfg.key)throw Error('Спочатку увійди до BUTDETAL і перевір налаштування сервера.');
+const prefix='shared/series/folders/',listUrl=cfg.url.replace(/\\/$/,'')+'/storage/v1/object/list/butdetal-archive';
+const headers={apikey:cfg.key,Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'};
+const remote=[];
+for(let offset=0;;offset+=500){
+ const response=await fetch(listUrl,{method:'POST',headers,body:JSON.stringify({prefix,limit:500,offset,sortBy:{column:'name',order:'asc'}})});
+ if(!response.ok)throw Error('Не вдалося отримати список серверних файлів (HTTP '+response.status+').');
+ const page=await response.json();if(!Array.isArray(page))throw Error('Сервер повернув некоректний список файлів.');
+ remote.push(...page);if(page.length<500)break;
+}
+for(const item of remote){
+ const name=String(item.name||'');
+ if(!name||name==='.'||name==='..'||name.includes('\\')||name.startsWith('/'))continue;
+ await storageDeleteObject(prefix+name);
+}
+const cleared=AndroidStorage.clearSeriesCatalog();
+if(cleared!=='OK')throw Error(cleared||'Не вдалося очистити локальний каталог серій.');
+if(typeof AndroidStorage.setKnownSeriesSyncFolders==='function'){
+ const state=AndroidStorage.setKnownSeriesSyncFolders('[]');
+ if(state!=='OK')throw Error((state||'Не вдалося скинути стан синхронізації').replace(/^ERROR:/,''));
+}
+loadSeriesCatalog();showSeriesStatus('Каталог серій очищено на телефоні й сервері ('+remote.length+' серверних об’єктів).',true);
 }else{
 localStorage.removeItem('bua_product_catalog');
 if(document.getElementById('productSearch'))document.getElementById('productSearch').value='';
 renderProductCatalog();alert('Каталог виробів очищено.');
 }
-}catch(e){alert('Помилка очищення: '+(e.message||e));}
+}catch(e){showSeriesStatus('Очищення не завершено: '+(e.message||e)+'. Локальні серії залишено, якщо серверне видалення не завершилось.',false);alert('Помилка очищення: '+(e.message||e));}
 }
 function seriesNative(){return !!(window.AndroidStorage && typeof AndroidStorage.listSeriesCatalog==='function')}
 function showSeriesStatus(message,ok){const el=document.getElementById('seriesImportStatus');if(!el)return;el.classList.remove('hidden');el.textContent=message;el.style.borderColor=ok?'#35c875':'#e34b4b'}
