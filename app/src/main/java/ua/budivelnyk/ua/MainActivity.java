@@ -105,15 +105,33 @@ public class MainActivity extends Activity {
         if(!data.exists()&&!data.mkdirs()) throw new IOException("Не вдалося створити папку tessdata");
         for(String lang:new String[]{"ukr","rus","eng"}) {
             File target=new File(data,lang+".traineddata");
-            if(!target.exists() || target.length()<100000) {
+            long expected;
+            try(InputStream probe=getAssets().open("tessdata/"+lang+".traineddata")) {
+                expected=probe.available();
+            }
+            if(!target.exists() || target.length()!=expected) {
+                File temp=new File(data,lang+".traineddata.tmp");
                 try(InputStream in=getAssets().open("tessdata/"+lang+".traineddata");
-                    OutputStream out=new FileOutputStream(target)) {
-                    byte[] b=new byte[8192]; int n;
+                    OutputStream out=new FileOutputStream(temp)) {
+                    byte[] b=new byte[16384]; int n;
                     while((n=in.read(b))>0) out.write(b,0,n);
+                    out.flush();
+                }
+                if(!temp.exists() || temp.length()!=expected) {
+                    temp.delete();
+                    throw new IOException("Мовна модель "+lang+" скопіювалася не повністю. Очікується "+expected+" байт.");
+                }
+                if(target.exists()&&!target.delete()) {
+                    temp.delete();
+                    throw new IOException("Не вдалося замінити мовну модель "+lang);
+                }
+                if(!temp.renameTo(target)) {
+                    temp.delete();
+                    throw new IOException("Не вдалося завершити копіювання мовної моделі "+lang);
                 }
             }
-            if(!target.exists() || target.length()<100000)
-                throw new IOException("Мовний файл пошкоджений: "+lang);
+            if(!target.exists() || target.length()!=expected)
+                throw new IOException("Мовний файл "+lang+" має неправильний розмір: "+target.length()+" із "+expected+" байт.");
         }
         return base;
     }
