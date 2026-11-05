@@ -237,19 +237,92 @@ public final class SeriesCatalogManager {
         return Base64.encodeToString(raw, Base64.NO_WRAP);
     }
 
+    /** Stream a folder ZIP to cache and expose bounded Base64 reads for WebView sync. */
+    public JSONObject createSyncZip(String folderName) throws Exception {
+        File root = new File(baseDir, "Каталог");
+        File folder = safeResolve(root, folderName);
+        if (folder == null || !folder.isDirectory() || folderName.contains("/") || folderName.contains("\\"))
+            throw new IOException("Папку серії не знайдено");
+        File archive = File.createTempFile("butdetal-sync-", ".zip", context.getCacheDir());
+        try (ZipOutputStream zip = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(archive)))) {
+            zipTree(folder, folder, zip);
+        }
+        JSONObject result = new JSONObject();
+        result.put("path", archive.getAbsolutePath());
+        result.put("size", archive.length());
+        return result;
+    }
+
+    public String readSyncZipChunkBase64(String path, long offset, int length) throws Exception {
+        File archive = checkedCacheFile(path);
+        if (offset < 0 || length < 0 || length > 8 * 1024 * 1024 || offset > archive.length())
+            throw new IOException("Некоректний діапазон частини ZIP");
+        int wanted = (int)Math.min((long)length, archive.length() - offset);
+        byte[] bytes = new byte[wanted];
+        try (RandomAccessFile input = new RandomAccessFile(archive, "r")) {
+            input.seek(offset);
+            input.readFully(bytes);
+        }
+        return Base64.encodeToString(bytes, Base64.NO_WRAP);
+    }
+
+    public String beginSyncReceive() throws Exception {
+        File archive = File.createTempFile("butdetal-sync-in-", ".zip", context.getCacheDir());
+        return archive.getAbsolutePath();
+    }
+
+    public String appendSyncReceiveChunk(String path, String base64) throws Exception {
+        File archive = checkedCacheFile(path);
+        byte[] bytes = Base64.decode(base64, Base64.DEFAULT);
+        if (bytes.length > 8 * 1024 * 1024) throw new IOException("Частина ZIP завелика");
+        try (OutputStream out = new BufferedOutputStream(new FileOutputStream(archive, true))) {
+            out.write(bytes);
+        }
+        return "OK";
+    }
+
+    public JSONObject finishSyncReceive(String folderName, String path) throws Exception {
+        File archive = checkedCacheFile(path);
+        return mergeFolderZipFile(folderName, archive);
+    }
+
+    public String deleteSyncTempFile(String path) throws Exception {
+        File file = checkedCacheFile(path);
+        return file.delete() || !file.exists() ? "OK" : "ERROR:Не вдалося видалити тимчасовий файл синхронізації";
+    }
+
+
+
+    private File checkedCacheFile(String path) throws IOException {
+        if (path == null || path.trim().isEmpty()) throw new IOException("Не задано тимчасовий файл синхронізації");
+        File file = new File(path).getCanonicalFile();
+        File cache = context.getCacheDir().getCanonicalFile();
+        if (!file.getPath().startsWith(cache.getPath() + File.separator) || !file.isFile())
+            throw new IOException("Некоректний тимчасовий файл синхронізації");
+        return file;
+    }
+
     public JSONObject mergeFolderZipBase64(String folderName, String base64) throws Exception {
-        if (folderName == null || folderName.trim().isEmpty() || folderName.contains("/") || folderName.contains("\\\\") || folderName.equals(".."))
+        if (folderName == null || folderName.trim().isEmpty() || folderName.contains("/") || folderName.contains("\\") || folderName.equals(".."))
             throw new IOException("Некоректна назва папки серії");
-        byte[] raw = Base64.decode(base64, Base64.DEFAULT);
+        File archive = File.createTempFile("butdetal-series-folder-", ".zip", context.getCacheDir());
+        try (OutputStream out = new BufferedOutputStream(new FileOutputStream(archive))) {
+            byte[] raw = Base64.decode(base64, Base64.DEFAULT);
+            out.write(raw);
+        }
+        return mergeFolderZipFile(folderName, archive);
+    }
+
+    public JSONObject mergeFolderZipFile(String folderName, File archive) throws Exception {
+        if (folderName == null || folderName.trim().isEmpty() || folderName.contains("/") || folderName.contains("\\") || folderName.equals(".."))
+            throw new IOException("Некоректна назва папки серії");
         File root = new File(baseDir, "Каталог");
         if (!root.exists() && !root.mkdirs()) throw new IOException("Не вдалося створити каталог серій");
         File targetRoot = new File(root, folderName);
         File staging = new File(root, "_sync_" + System.currentTimeMillis());
         if (!staging.mkdirs()) throw new IOException("Не вдалося створити тимчасову папку синхронізації");
-        File archive = File.createTempFile("butdetal-series-folder-", ".zip", context.getCacheDir());
         int added = 0, conflicts = 0; long total = 0; int entries = 0;
         try {
-            try (OutputStream out = new BufferedOutputStream(new FileOutputStream(archive))) { out.write(raw); }
             try (java.util.zip.ZipFile zip = new java.util.zip.ZipFile(archive, java.nio.charset.Charset.forName("CP866"))) {
                 Enumeration<? extends ZipEntry> it = zip.entries(); byte[] buffer = new byte[32768];
                 while (it.hasMoreElements()) {
