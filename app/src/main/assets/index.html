@@ -212,9 +212,27 @@ async function syncSeriesCatalog(){
  showSeriesStatus('Зіставляю локальні та серверні папки серій…',true);
  try{
   const localFolders=JSON.parse(AndroidStorage.listSeriesSyncFolders()||'[]'),localNameByKey=new Map();
-  for(const f of localFolders){const name=String(f.name||'').trim();if(name&&name!=='.'&&name!=='..'&&!name.includes('/')&&!name.includes('\\'))localNameByKey.set(storageSafeFolderKey(name),name)}
+  for(const f of localFolders){
+   const name=String(f.name||'').trim();
+   if(name&&name!=='.'&&name!=='..'&&!name.includes('/')&&!name.includes('\\')){
+    const key=storageSafeFolderKey(name),prior=localNameByKey.get(key);
+    if(prior&&prior!==name)throw Error('Дві локальні папки серій мають однаковий ключ синхронізації: «'+prior+'» та «'+name+'». Перейменуй одну папку, щоб уникнути перезапису.');
+    localNameByKey.set(key,name);
+   }
+  }
   const knownNames=JSON.parse(AndroidStorage.getKnownSeriesSyncFolders()||'[]'),knownKeys=new Map();
-  for(const n0 of knownNames){const n=String(n0||'').trim();if(n)knownKeys.set(storageSafeFolderKey(n),n)}
+  for(const n0 of knownNames){
+   const n=String(n0||'').trim();
+   if(n){
+    const key=storageSafeFolderKey(n),prior=knownKeys.get(key);
+    if(prior&&prior!==n)throw Error('У збереженому стані синхронізації є неоднозначні назви серій: «'+prior+'» та «'+n+'».');
+    knownKeys.set(key,n);
+   }
+  }
+  for(const [key,name] of localNameByKey){
+   const prior=knownKeys.get(key);
+   if(prior&&prior!==name)throw Error('Назва локальної серії «'+name+'» не збігається зі збереженою назвою «'+prior+'» для того самого ключа. Синхронізацію зупинено, щоб не видалити дані.');
+  }
   const listUrl=cfg.url.replace(/\/$/,'')+'/storage/v1/object/list/butdetal-archive',remoteItems=[],pageSize=1000;
   for(let offset=0;;offset+=pageSize){const r=await fetch(listUrl,{method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({prefix:prefix,limit:pageSize,offset:offset,sortBy:{column:'name',order:'asc'}})});if(!r.ok)throw Error('Не вдалося отримати список серій із сервера (HTTP '+r.status+').');const page=await r.json();if(!Array.isArray(page))throw Error('Сервер повернув некоректний список папок серій.');remoteItems.push(...page);if(page.length<pageSize)break}
   const remoteByBase=new Map();
