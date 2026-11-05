@@ -208,7 +208,7 @@ async function syncSeriesCatalog(){
  if(!session){showSeriesStatus('Спочатку увійди до BUTDETAL.',false);return}
  const bridge=['listSeriesSyncFolders','createSeriesSyncZip','readSeriesSyncZipChunkBase64','beginSeriesSyncReceive','appendSeriesSyncReceiveChunk','finishSeriesSyncReceive','deleteSeriesSyncTempFile','getKnownSeriesSyncFolders','setKnownSeriesSyncFolders','deleteSeriesSyncFolder'];
  if(!seriesNative()||bridge.some(k=>typeof AndroidStorage[k]!=='function')){showSeriesStatus('Синхронізація папок серій доступна після оновлення Android-застосунку.',false);return}
- const cfg=getSbConfig(),prefix='shared/series/folders/',headers={apikey:cfg.key,Authorization:'Bearer '+session.access_token},chunkBytes=8*1024*1024;
+ const cfg=getSbConfig(),prefix='shared/series/folders/',headers={apikey:cfg.key,Authorization:'Bearer '+session.access_token},chunkBytes=40*1024*1024,bridgeBytes=8*1024*1024;
  showSeriesStatus('Зіставляю локальні та серверні папки серій…',true);
  try{
   const localFolders=JSON.parse(AndroidStorage.listSeriesSyncFolders()||'[]'),localNameByKey=new Map();
@@ -258,9 +258,12 @@ async function syncSeriesCatalog(){
      try{
       const generation=String(manifest.generation||'');let receivedSize=0;
       for(let i=0;i<Number(manifest.parts);i++){
-       const partPath=prefix+key+(generation?'.'+generation:'')+'.part'+String(i).padStart(5,'0'),partBlob=await storageDownload(partPath),base64=seriesBlobToBase64(await partBlob.arrayBuffer());
+       const partPath=prefix+key+(generation?'.'+generation:'')+'.part'+String(i).padStart(5,'0'),partBlob=await storageDownload(partPath);
        receivedSize+=Number(partBlob.size||0);
-       const appended=AndroidStorage.appendSeriesSyncReceiveChunk(receivePath,base64);if(appended!=='OK')throw Error((appended||'Не вдалося записати частину серії').replace(/^ERROR:/,''));
+       for(let offset=0;offset<partBlob.size;offset+=bridgeBytes){
+        const slice=partBlob.slice(offset,Math.min(offset+bridgeBytes,partBlob.size)),base64=seriesBlobToBase64(await slice.arrayBuffer());
+        const appended=AndroidStorage.appendSeriesSyncReceiveChunk(receivePath,base64);if(appended!=='OK')throw Error((appended||'Не вдалося записати частину серії').replace(/^ERROR:/,''));
+       }
       }
       if(manifest.size!=null&&receivedSize!==Number(manifest.size))throw Error('Розмір завантажених частин не збігається з маніфестом');
       const merged=AndroidStorage.finishSeriesSyncReceive(name,receivePath);if(!merged||merged.indexOf('ERROR:')===0)throw Error((merged||'Помилка складання серії').replace(/^ERROR:/,''));
@@ -278,9 +281,14 @@ async function syncSeriesCatalog(){
     try{
      const generation=Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8);
      for(let i=0;i<parts;i++){
-      const offset=i*chunkBytes,length=Math.min(chunkBytes,size-offset),b64=AndroidStorage.readSeriesSyncZipChunkBase64(archive.path,offset,length);
-      if(!b64||b64.indexOf('ERROR:')===0)throw Error((b64||'Не вдалося прочитати частину ZIP').replace(/^ERROR:/,''));
-      await storageUpload(prefix+key+'.'+generation+'.part'+String(i).padStart(5,'0'),seriesBlobFromBase64(b64),'application/octet-stream');
+      const offset=i*chunkBytes,length=Math.min(chunkBytes,size-offset),pieceBlobs=[];
+      for(let inner=0;inner<length;inner+=bridgeBytes){
+       const readLength=Math.min(bridgeBytes,length-inner),b64=AndroidStorage.readSeriesSyncZipChunkBase64(archive.path,offset+inner,readLength);
+       if(!b64||b64.indexOf('ERROR:')===0)throw Error((b64||'Не вдалося прочитати частину ZIP').replace(/^ERROR:/,''));
+       pieceBlobs.push(seriesBlobFromBase64(b64));
+      }
+      const storagePart=new Blob(pieceBlobs,{type:'application/octet-stream'});
+      await storageUpload(prefix+key+'.'+generation+'.part'+String(i).padStart(5,'0'),storagePart,'application/octet-stream');
      }
      const manifest={format:1,folder:name,generation:generation,size:size,parts:parts,chunkBytes:chunkBytes,updatedAt:new Date().toISOString()};
      await storageUpload(manifestPath,new Blob([JSON.stringify(manifest)],{type:'application/json'}),'application/json');
