@@ -195,7 +195,7 @@ async function storageDeleteObject(path){
 function seriesBlobFromBase64(b64){
  const raw=atob(b64||''),bytes=new Uint8Array(raw.length);
  for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
- return new Blob([bytes],{type:'application/octet-stream'});
+ return new Blob([bytes],{type:'application/zip'});
 }
 function seriesBlobToBase64(blobBytes){
  let raw='',bytes=new Uint8Array(blobBytes);
@@ -307,9 +307,9 @@ async function syncSeriesCatalog(){
        if(!b64||b64.indexOf('ERROR:')===0)throw Error((b64||'Не вдалося прочитати частину ZIP').replace(/^ERROR:/,''));
        pieceBlobs.push(seriesBlobFromBase64(b64));
       }
-      const storagePart=new Blob(pieceBlobs,{type:'application/octet-stream'});
+      const storagePart=new Blob(pieceBlobs,{type:'application/zip'});
       const partPath=prefix+key+'.'+generation+'.part'+String(i).padStart(5,'0');
-      await storageUpload(partPath,storagePart,'application/octet-stream');
+      await storageUpload(partPath,storagePart,'application/zip');
       uploadedPartPaths.push(partPath);
      }
      const manifest={format:1,folder:name,generation:generation,size:size,parts:parts,chunkBytes:chunkBytes,updatedAt:new Date().toISOString()};
