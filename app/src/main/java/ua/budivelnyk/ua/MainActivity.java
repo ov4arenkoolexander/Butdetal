@@ -204,6 +204,10 @@ public class MainActivity extends Activity {
             try { return seriesCatalogManager.finishSyncReceive(folderName, path).toString(); }
             catch (Exception e) { return "ERROR:" + e.getMessage(); }
         }
+        @JavascriptInterface public String deleteSeriesSyncTempFile(String path) {
+            try { return seriesCatalogManager.deleteSyncTempFile(path); }
+            catch (Exception e) { return "ERROR:" + e.getMessage(); }
+        }
         @JavascriptInterface public String exportSeriesCatalogZipBase64() {
             try { return seriesCatalogManager.exportCatalogZipBase64(); }
             catch (Exception e) { return "ERROR:" + e.getMessage(); }
