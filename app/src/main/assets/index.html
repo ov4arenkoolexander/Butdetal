@@ -279,6 +279,7 @@ async function syncSeriesCatalog(){
     if(parts>10000)throw Error('ZIP серії завеликий для синхронізації: кількість частин перевищує 10000.');
     let previousManifest=null;
     if(row.manifest){try{previousManifest=JSON.parse(await (await storageDownload(manifestPath)).text())}catch(e){}}
+    const uploadedPartPaths=[];
     try{
      const generation=Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8);
      for(let i=0;i<parts;i++){
@@ -289,7 +290,9 @@ async function syncSeriesCatalog(){
        pieceBlobs.push(seriesBlobFromBase64(b64));
       }
       const storagePart=new Blob(pieceBlobs,{type:'application/octet-stream'});
-      await storageUpload(prefix+key+'.'+generation+'.part'+String(i).padStart(5,'0'),storagePart,'application/octet-stream');
+      const partPath=prefix+key+'.'+generation+'.part'+String(i).padStart(5,'0)';
+      await storageUpload(partPath,storagePart,'application/octet-stream');
+      uploadedPartPaths.push(partPath);
      }
      const manifest={format:1,folder:name,generation:generation,size:size,parts:parts,chunkBytes:chunkBytes,updatedAt:new Date().toISOString()};
      await storageUpload(manifestPath,new Blob([JSON.stringify(manifest)],{type:'application/json'}),'application/json');
@@ -299,6 +302,10 @@ async function syncSeriesCatalog(){
      }
      if(row.legacy)await storageDeleteObject(prefix+row.legacy);
      nextKnown.add(name);done++;
+    }catch(uploadError){
+     // An interrupted upload must not leave a partial generation that can be mistaken for a complete archive.
+     for(const partPath of uploadedPartPaths){try{await storageDeleteObject(partPath)}catch(cleanupError){}}
+     throw uploadError;
     }finally{try{AndroidStorage.deleteSeriesSyncTempFile(archive.path)}catch(cleanupError){}}
    }catch(e){errors.push(name+': '+(e&&e.message?e.message:'невідома помилка'))}
   }
