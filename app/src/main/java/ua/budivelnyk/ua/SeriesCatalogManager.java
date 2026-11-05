@@ -286,6 +286,13 @@ public final class SeriesCatalogManager {
         return mergeFolderZipFile(folderName, archive);
     }
 
+    public String deleteSyncTempFile(String path) throws Exception {
+        File file = checkedCacheFile(path);
+        return file.delete() || !file.exists() ? "OK" : "ERROR:Не вдалося видалити тимчасовий файл синхронізації";
+    }
+
+
+
     private File checkedCacheFile(String path) throws IOException {
         if (path == null || path.trim().isEmpty()) throw new IOException("Не задано тимчасовий файл синхронізації");
         File file = new File(path).getCanonicalFile();
