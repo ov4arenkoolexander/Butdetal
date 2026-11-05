@@ -303,6 +303,8 @@ public final class SeriesCatalogManager {
     }
 
     public JSONObject mergeFolderZipBase64(String folderName, String base64) throws Exception {
+        if (folderName == null || folderName.trim().isEmpty() || folderName.contains("/") || folderName.contains("\\\\") || folderName.equals(".."))
+            throw new IOException("Некоректна назва папки серії");
         File archive = File.createTempFile("butdetal-series-folder-", ".zip", context.getCacheDir());
         try (OutputStream out = new BufferedOutputStream(new FileOutputStream(archive))) {
             byte[] raw = Base64.decode(base64, Base64.DEFAULT);
