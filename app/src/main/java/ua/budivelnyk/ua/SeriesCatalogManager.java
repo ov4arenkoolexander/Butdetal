@@ -241,7 +241,7 @@ public final class SeriesCatalogManager {
     public JSONObject createSyncZip(String folderName) throws Exception {
         File root = new File(baseDir, "Каталог");
         File folder = safeResolve(root, folderName);
-        if (folder == null || !folder.isDirectory() || folderName.contains("/") || folderName.contains("\\\\"))
+        if (folder == null || !folder.isDirectory() || folderName.contains("/") || folderName.contains("\\"))
             throw new IOException("Папку серії не знайдено");
         File archive = File.createTempFile("butdetal-sync-", ".zip", context.getCacheDir());
         try (ZipOutputStream zip = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(archive)))) {
@@ -303,7 +303,7 @@ public final class SeriesCatalogManager {
     }
 
     public JSONObject mergeFolderZipBase64(String folderName, String base64) throws Exception {
-        if (folderName == null || folderName.trim().isEmpty() || folderName.contains("/") || folderName.contains("\\\\") || folderName.equals(".."))
+        if (folderName == null || folderName.trim().isEmpty() || folderName.contains("/") || folderName.contains("\\") || folderName.equals(".."))
             throw new IOException("Некоректна назва папки серії");
         File archive = File.createTempFile("butdetal-series-folder-", ".zip", context.getCacheDir());
         try (OutputStream out = new BufferedOutputStream(new FileOutputStream(archive))) {
@@ -314,7 +314,7 @@ public final class SeriesCatalogManager {
     }
 
     public JSONObject mergeFolderZipFile(String folderName, File archive) throws Exception {
-        if (folderName == null || folderName.trim().isEmpty() || folderName.contains("/") || folderName.contains("\\\\") || folderName.equals(".."))
+        if (folderName == null || folderName.trim().isEmpty() || folderName.contains("/") || folderName.contains("\\") || folderName.equals(".."))
             throw new IOException("Некоректна назва папки серії");
         File root = new File(baseDir, "Каталог");
         if (!root.exists() && !root.mkdirs()) throw new IOException("Не вдалося створити каталог серій");
