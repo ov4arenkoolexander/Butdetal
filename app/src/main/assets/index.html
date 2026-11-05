@@ -276,6 +276,7 @@ async function syncSeriesCatalog(){
     const exported=AndroidStorage.createSeriesSyncZip(name);if(!exported||exported.indexOf('ERROR:')===0)throw Error((exported||'Не вдалося підготувати ZIP серії').replace(/^ERROR:/,''));
     const archive=JSON.parse(exported),size=Number(archive.size||0),parts=Math.max(1,Math.ceil(size/chunkBytes));
     if(!archive.path||!Number.isFinite(size)||size<=0)throw Error('Android повернув некоректний ZIP для синхронізації');
+    if(parts>10000)throw Error('ZIP серії завеликий для синхронізації: кількість частин перевищує 10000.');
     let previousManifest=null;
     if(row.manifest){try{previousManifest=JSON.parse(await (await storageDownload(manifestPath)).text())}catch(e){}}
     try{
