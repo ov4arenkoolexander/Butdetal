@@ -349,8 +349,6 @@ public final class SeriesCatalogManager {
         } finally { deleteTree(staging); if (archive.exists()) archive.delete(); }
         JSONObject result=new JSONObject(); result.put("added",added); result.put("conflicts",conflicts); result.put("entries",entries); return result;
     }
-    }
-
 
     /** Avoid generating a new conflict copy on every sync for identical incoming bytes. */
     private boolean hasIdenticalConflictCopy(File directory, String stem, String ext, File incoming) throws IOException {
