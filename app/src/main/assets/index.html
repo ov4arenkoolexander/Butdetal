@@ -186,9 +186,14 @@ if(typeof AndroidStorage.setKnownSeriesSyncFolders==='function'){
 }
 loadSeriesCatalog();showSeriesStatus('Каталог серій очищено на телефоні й сервері ('+remote.length+' серверних об’єктів).',true);
 }else{
+const session=currentButdetalSession(),cfg=getSbConfig();
+if(!session||!cfg.url||!cfg.key||!session.access_token)throw Error('Спочатку увійди до BUTDETAL і перевір налаштування сервера.');
+// Delete only product records in the shared table; series storage is independent.
+await sbRequest('/rest/v1/shared_records?record_type=eq.product',{method:'DELETE',headers:{Prefer:'return=minimal'}});
 localStorage.removeItem('bua_product_catalog');
+localStorage.setItem('bua_product_sync_ids_v1','[]');
 if(document.getElementById('productSearch'))document.getElementById('productSearch').value='';
-renderProductCatalog();alert('Каталог виробів очищено.');
+renderProductCatalog();alert('Каталог виробів очищено на телефоні й сервері.');
 }
 }catch(e){showSeriesStatus('Очищення не завершено: '+(e.message||e)+'. Локальні серії залишено, якщо серверне видалення не завершилось.',false);alert('Помилка очищення: '+(e.message||e));}
 }
