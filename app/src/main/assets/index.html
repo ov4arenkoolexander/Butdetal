@@ -221,7 +221,7 @@ async function syncSeriesCatalog(){
   for(const item of remoteItems){
    const objectName=String(item.name||'');
    let key=null,kind=null;
-   if(objectName.endsWith('.manifest.json')){key=objectName.slice(0,-13);kind='manifest'}
+   if(objectName.endsWith('.manifest.json')){key=objectName.slice(0,-14);kind='manifest'}
    else if(/\.zip$/i.test(objectName)){key=objectName.slice(0,-4);kind='legacy'}
    if(key&&!key.includes('/')&&!key.includes('\\')){
     const row=remoteByBase.get(key)||{manifest:null,legacy:null};
