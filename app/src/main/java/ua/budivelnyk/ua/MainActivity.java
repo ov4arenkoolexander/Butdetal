@@ -313,7 +313,7 @@ public class MainActivity extends Activity {
                 }
             } catch (Exception e) { return -1; }
         }
-        @JavascriptInterface public String renderSeriesPdfPage(String relativePath, int pageIndex) {
+        @JavascriptInterface public String renderSeriesPdfPage(String relativePath, int pageIndex, float requestedZoom) {
             try {
                 File f = seriesCatalogManager.resolve(relativePath);
                 if (f == null || !f.isFile()) return "";
@@ -321,12 +321,24 @@ public class MainActivity extends Activity {
                      PdfRenderer renderer = new PdfRenderer(pfd)) {
                     if (pageIndex < 0 || pageIndex >= renderer.getPageCount()) return "";
                     try (PdfRenderer.Page page = renderer.openPage(pageIndex)) {
-                        final int maxWidth = 1500;
-                        float scale = Math.min(1.0f, maxWidth / (float) Math.max(1, page.getWidth()));
+                        // Re-render at higher pixel density when the user zooms in.
+                        // Bound the bitmap dimensions to avoid excessive memory use.
+                        float zoom = Math.max(1.0f, Math.min(4.0f, requestedZoom));
+                        final int maxWidth = Math.round(1500 * zoom);
+                        float scale = Math.min(4.0f, maxWidth / (float) Math.max(1, page.getWidth()));
                         int width = Math.max(1, Math.round(page.getWidth() * scale));
                         int height = Math.max(1, Math.round(page.getHeight() * scale));
+                        long pixels = (long) width * height;
+                        if (pixels > 16_000_000L) {
+                            float down = (float) Math.sqrt(16_000_000.0 / pixels);
+                            width = Math.max(1, Math.round(width * down));
+                            height = Math.max(1, Math.round(height * down));
+                            scale *= down;
+                        }
                         Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
-                        page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
+                        android.graphics.Matrix matrix = new android.graphics.Matrix();
+                        matrix.setScale(scale, scale);
+                        page.render(bitmap, null, matrix, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
                         ByteArrayOutputStream out = new ByteArrayOutputStream();
                         bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
                         bitmap.recycle();
