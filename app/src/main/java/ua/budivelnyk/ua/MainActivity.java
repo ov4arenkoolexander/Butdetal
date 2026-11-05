@@ -157,7 +157,8 @@ public class MainActivity extends Activity {
             TessBaseAPI api=new TessBaseAPI();
             boolean initialized=false;
             try {
-                initialized=api.init(base.getAbsolutePath(),languageMode);
+                // tess-two/Tesseract очікує datapath із завершальним роздільником; далі сам додає tessdata/.
+                initialized=api.init(base.getAbsolutePath()+File.separator,languageMode);
                 if(!initialized) {
                     lastError=new IOException("Tesseract init повернув false для мов: "+languageMode);
                     continue;
