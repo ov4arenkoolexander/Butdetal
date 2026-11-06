@@ -190,7 +190,7 @@ public class MainActivity extends Activity {
         // ML Kit's bundled text recognizer supports Latin; Cyrillic remains handled by Tesseract.
         com.google.mlkit.vision.text.TextRecognizer latin =
             com.google.mlkit.vision.text.TextRecognition.getClient(
-                com.google.mlkit.vision.text.TextRecognizerOptions.DEFAULT_OPTIONS);
+                com.google.mlkit.vision.text.latin.TextRecognizerOptions.DEFAULT_OPTIONS);
         try {
             com.google.mlkit.vision.common.InputImage image =
                 com.google.mlkit.vision.common.InputImage.fromBitmap(bitmap,0);
