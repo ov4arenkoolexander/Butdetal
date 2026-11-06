@@ -354,7 +354,7 @@ public class MainActivity extends Activity {
                 File parent = target.getParentFile();
                 if (!parent.exists() && !parent.mkdirs()) return "Не вдалося створити папку OCR";
                 try (FileOutputStream out = new FileOutputStream(target)) { out.write(recognized.toString().getBytes(StandardCharsets.UTF_8)); }
-                return "Оброблено PDF: текстовий шар + OCR для сканованих сторінок. Текст додано до пошуку.";
+                return "Оброблено PDF: текстовий шар + OCR для сканованих сторінок. Текст додано до пошуку.\n@@BUTDETAL_OCR_TEXT@@\n" + recognized.toString();
             } catch (Exception e) { return "Помилка OCR серії: " + e.getMessage(); }
         }
         @JavascriptInterface public int getSeriesPdfPageCount(String relativePath) {
