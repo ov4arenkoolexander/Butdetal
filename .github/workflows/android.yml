@@ -133,7 +133,7 @@ jobs:
           import os, sys, base64, re
           raw = os.environ["KEYSTORE_BASE64"]
           raw = re.sub(r"-----BEGIN [^-]+-----|-----END [^-]+-----", "", raw)
-          raw = re.sub(r"\\s+", "", raw)
+          raw = re.sub(r"\s+", "", raw)
           try:
               data = base64.b64decode(raw, validate=True)
           except Exception:
