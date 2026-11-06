@@ -2,7 +2,7 @@ name: Build and publish BUTDETAL APK
 
 on:
   push:
-    branches: [main, feature/series-catalog-import]
+    branches: [main, feature/series-catalog-import, feature/ocr-settings-staging]
     tags: ['v*']
   pull_request:
     branches: [main]
