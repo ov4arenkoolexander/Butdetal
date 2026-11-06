@@ -2,7 +2,7 @@ name: Build and publish BUTDETAL APK
 
 on:
   push:
-    branches: [main, feature/series-catalog-import]
+    branches: [main, feature/series-catalog-import, feature/ocr-settings-staging]
     tags: ['v*']
   pull_request:
     branches: [main]
@@ -62,7 +62,7 @@ jobs:
           retention-days: 30
 
   publish-release:
-    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'push' && github.ref == 'refs/heads/feature/series-catalog-import')
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'push' && (github.ref == 'refs/heads/feature/series-catalog-import' || github.ref == 'refs/heads/feature/ocr-settings-staging'))
     runs-on: ubuntu-latest
     permissions:
       contents: write
