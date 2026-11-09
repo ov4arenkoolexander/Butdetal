@@ -53,7 +53,7 @@ facts.forEach((f,fi)=>f.prompts.forEach((prompt,pi)=>{
  // Deterministic option order varies by prompt and fact, while correctness is stored explicitly.
  const shift=(fi+pi)%4;
  const opts=[choices[0],choices[1+((shift)%3)],choices[1+((shift+1)%3)],choices[1+((shift+2)%3)]];
- questions.push({id:fi*4+pi+1,topic:f.topic,q:prompt,answer:f.fact,options:opts,why:f.why});
+ questions.push({id:fi*4+pi+1,topic:f.topic,q:prompt,answer:f.fact,options:shuffle(opts),why:f.why});
 }));
 const topicNames={slabs:'Пустотні плити',quality:'Якість і контроль',machine:'Машина CGM TC2',safety:'Охорона праці',storage:'Складування та перевезення'};
 let active=[],at=0,answers=[],selected=-1,quizTopic='all';
