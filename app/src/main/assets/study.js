@@ -93,8 +93,8 @@ async function finishQuiz(){
 window.studyBackToCards=function(){$('studyResult').classList.add('hidden');$('studyIntro').classList.remove('hidden');};
 window.renderStudyCards=function(){
  const topics=Object.keys(topicNames);
- $('studyCards').innerHTML=topics.map(t=>'<div class="card"><h3>'+esc(topicNames[t])+'</h3><p class="muted">'+questions.filter(q=>q.topic===t).length+' питань у банку</p><button class="btn" onclick="startStudyQuiz(\''+t+'\')">Почати тест</button></div>').join('')+
- '<div class="card"><h3>Змішаний тест</h3><p class="muted">'+questions.length+' питань у спільному банку. У тесті — до 20 випадкових питань без повторів.</p><button class="btn" onclick="startStudyQuiz(\'all\')">Почати змішаний тест</button></div>';
+ $('studyCards').innerHTML=topics.map(t=>"<div class=\"card\"><h3>"+esc(topicNames[t])+"</h3><p class=\"muted\">"+questions.filter(q=>q.topic===t).length+" питань у банку</p><button class=\"btn\" onclick=\"startStudyQuiz('"+t+"')\">Почати тест</button></div>").join('')+
+ "<div class=\"card\"><h3>Змішаний тест</h3><p class=\"muted\">"+questions.length+" питань у спільному банку. У тесті — до 20 випадкових питань без повторів.</p><button class=\"btn\" onclick=\"startStudyQuiz('all')\">Почати змішаний тест</button></div>";
 };
 document.addEventListener('DOMContentLoaded',()=>{if($('studyCards'))renderStudyCards();});
 window.addEventListener('load',()=>{if($('studyCards'))renderStudyCards();});
