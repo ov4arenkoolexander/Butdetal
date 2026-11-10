@@ -55,7 +55,7 @@ footer{text-align:center;color:#8390a0;font-size:12px;padding:24px}
 </style>
 </head>
 <body>
-<header><small>ОФЛАЙН-ДОВІДНИК • ВЕРСІЯ 2.0.59 • CLOUD SYNC + OFFLINE</small><h1><svg viewBox="0 0 64 64" width="46" height="46" style="vertical-align:middle;margin-right:8px" aria-label="BUTDETAL"><path fill="#ffc400" d="M7 9h50v3H7zM16 12v29h3V12zm31 0v29h3V12zM17 18h33v2H17z"/><path fill="none" stroke="#ffc400" stroke-width="2.5" d="M32 12v39m-5 0h10M32 12l10 0 5 5M32 12l-10 0-5 5"/><path fill="#d5dee8" d="M6 43l16-5v11L6 54zm19-6l16-5v11l-16 5zm19-6l14-4v11l-14 4z"/><path fill="#ffc400" d="M6 56l53-15v4L6 60z"/></svg>BUTDETAL</h1><p>Довідник для будівельника • Формули, бетон, арматура</p><button class="btn" style="background:#c9e7a3;color:#173f35" onclick="checkAppUpdate()">Перевірити оновлення</button><p id="updateStatus" class="muted" style="color:#e3eee8" aria-live="polite">Перевірка оновлень — вручну</p></header>
+<header><small>ОФЛАЙН-ДОВІДНИК • ВЕРСІЯ 2.0.60 • CLOUD SYNC + OFFLINE</small><h1><svg viewBox="0 0 64 64" width="46" height="46" style="vertical-align:middle;margin-right:8px" aria-label="BUTDETAL"><path fill="#ffc400" d="M7 9h50v3H7zM16 12v29h3V12zm31 0v29h3V12zM17 18h33v2H17z"/><path fill="none" stroke="#ffc400" stroke-width="2.5" d="M32 12v39m-5 0h10M32 12l10 0 5 5M32 12l-10 0-5 5"/><path fill="#d5dee8" d="M6 43l16-5v11L6 54zm19-6l16-5v11l-16 5zm19-6l14-4v11l-14 4z"/><path fill="#ffc400" d="M6 56l53-15v4L6 60z"/></svg>BUTDETAL</h1><p>Довідник для будівельника • Формули, бетон, арматура</p><button class="btn" style="background:#c9e7a3;color:#173f35" onclick="checkAppUpdate()">Перевірити оновлення</button><p id="updateStatus" class="muted" style="color:#e3eee8" aria-live="polite">Перевірка оновлень — вручну</p></header>
 
 <section id="authGate" class="auth-panel">
 <h2>🔐 Вхід до BUTDETAL</h2>
@@ -628,6 +628,27 @@ function productDetailRow(label,value,suffix=''){
  const v=productDisplayValue(value);if(!v)return '';
  return '<div class="product-detail-row"><span>'+safeText(label)+'</span><b>'+safeText(v+suffix)+'</b></div>';
 }
+function parseProductGeometryDimensions(value){
+ const m=String(value||'').match(/(\d+(?:[.,]\d+)?)\s*[×xх*]\s*(\d+(?:[.,]\d+)?)\s*[×xх*]\s*(\d+(?:[.,]\d+)?)/i);
+ if(!m)return {length:'',width:'',height:''};
+ return {length:m[1].replace(',','.'),width:m[2].replace(',','.'),height:m[3].replace(',','.')};
+}
+function productGeometryVolume(){
+ const l=Number(document.getElementById('geometryLength')?.value),w=Number(document.getElementById('geometryWidth')?.value),h=Number(document.getElementById('geometryHeight')?.value);
+ const out=document.getElementById('geometryVolumeResult');
+ if(!out)return;
+ if(l>0&&w>0&&h>0)out.textContent=(l*w*h/1000000000).toLocaleString('uk-UA',{minimumFractionDigits:3,maximumFractionDigits:4})+' м³';
+ else out.textContent='Вкажи всі три розміри';
+}
+function saveProductGeometryDimensions(){
+ const a=Number(document.getElementById('geometryLength')?.value),b=Number(document.getElementById('geometryWidth')?.value),c=Number(document.getElementById('geometryHeight')?.value);
+ if(!(a>0&&b>0&&c>0)){alert('Вкажи довжину, ширину та висоту в міліметрах.');return}
+ const records=productRecords(),i=records.findIndex(v=>v.id===currentProductId);if(i<0)return;
+ records[i].dimensions=[a,b,c].join('×');records[i].updated=new Date().toISOString();saveProductRecords(records);
+ syncButdetalRecords().catch(e=>console.warn('Sync dimensions:',e));
+ viewProductCard(currentProductId);
+}
+
 function viewProductCard(id){
  let x=productRecords().find(v=>v.id===id);if(!x)return;
  currentProductId=id;
@@ -652,9 +673,12 @@ function viewProductCard(id){
  ].filter(Boolean).join('');
  let html='<div class="product-detail-hero" style="'+productCardBackground(x)+'"><h2>'+safeText(title)+'</h2>'+badge+'</div>';
  if(rows)html+='<div class="product-detail-grid">'+rows+'</div>';
+ const dims=parseProductGeometryDimensions(x.dimensions);
+ html+='<div class="card"><h3>Геометричний об’єм за габаритами</h3><p class="muted">Розрахунок прямокутного об’єму за зовнішніми розмірами. Порожнини не віднімаються; це не фактична витрата бетону.</p><div class="row"><div><label>Довжина, мм</label><input id="geometryLength" type="number" min="1" step="1" value="'+safeText(dims.length)+'" oninput="productGeometryVolume()"></div><div><label>Ширина, мм</label><input id="geometryWidth" type="number" min="1" step="1" value="'+safeText(dims.width)+'" oninput="productGeometryVolume()"></div><div><label>Висота, мм</label><input id="geometryHeight" type="number" min="1" step="1" value="'+safeText(dims.height)+'" oninput="productGeometryVolume()"></div></div><p><b>Геометричний об’єм: <span id="geometryVolumeResult">—</span></b></p><button type="button" class="btn" onclick="saveProductGeometryDimensions()">Зберегти розміри</button></div>';
  if(photos.length)html+='<h3>📷 Фото виробу ('+photos.length+')</h3>'+renderLinkedImages(photos);
  if(drawings.length)html+='<h3>📐 Креслення та армування ('+drawings.length+')</h3>'+renderLinkedImages(drawings);
  document.getElementById('detailBody').innerHTML=html;
+ productGeometryVolume();
  showPage('productDetails');
 }
 function renderLinkedImages(a){if(!a.length)return '<p class="muted">Файлів поки немає.</p>';return '<div class="photo-grid">'+a.map(x=>`<div class="photo-card"><img src="${x.dataUrl||''}" alt="${safeText(x.title)}"><div class="muted">${safeText(x.date||'')}</div><button class="btn danger" onclick="deleteLinkedImage('${safeText(x.folder||'')}', '${safeText(x.fileName||'')}')">Видалити фото</button></div>`).join('')+'</div>'}
