@@ -603,7 +603,8 @@ function renderProductCatalog(){
    productMetaChip('Креслення',x.drawingNumber)
   ].filter(Boolean).join('');
   const chips=meta?'<div class="product-card-meta">'+meta+'</div>':'';
-  return '<article class="item product-visual-card" style="'+productCardBackground(x)+'"><div class="product-visual-content"><div class="product-card-top"><b>'+safeText(title)+'</b>'+badge+'</div>'+subtitle+chips+'<div class="product-card-actions"><button class="btn" onclick="viewProductCard('+JSON.stringify(String(x.id))+')">Відкрити картку</button></div></div></article>';
+  const cardId=String(x.id).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+  return '<article class="item product-visual-card" style="'+productCardBackground(x)+'"><div class="product-visual-content"><div class="product-card-top"><b>'+safeText(title)+'</b>'+badge+'</div>'+subtitle+chips+'<div class="product-card-actions"><button type="button" class="btn" onclick="viewProductCard(\\''+cardId+'\\')">Відкрити картку</button></div></div></article>';
  }).join('');
 }
 function showPage(id){document.querySelectorAll('.page').forEach(x=>x.classList.add('hidden'));document.getElementById(id).classList.remove('hidden');document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));window.scrollTo(0,0)}
