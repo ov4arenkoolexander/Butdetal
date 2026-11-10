@@ -25,10 +25,33 @@ function dbEntry(row){
  const detail={action:row.action,table:row.table_name,record_id:row.record_id,old_data:row.old_data,new_data:row.new_data};
  return {category:'catalog',date:row.changed_at||row.created_at,actor:row.actor_name||'Користувач',title,summary:'Каталог • '+(row.table_name||'запис'),details:detail,searchText:JSON.stringify(detail)};
 }
+function translateCommitMessage(raw,category){
+ const source=String(raw||'').split('\n')[0].trim();
+ const exact={
+  'Build and publish BUTDETAL APK':'Збірка та публікація APK BUTDETAL',
+  'Build debug APK':'Збірка тестового APK',
+  'Update version':'Оновлення версії застосунку',
+  'Bump version':'Підвищення версії застосунку',
+  'Add study materials and journal':'Додано навчальні матеріали та журнал змін',
+  'Add journal':'Додано журнал змін',
+  'Fix tests':'Виправлено тести',
+  'Update tests':'Оновлено тести',
+  'Update app':'Оновлено застосунок',
+  'Initial commit':'Початкове додавання проєкту'
+ };
+ if(exact[source])return exact[source];
+ let translated=source;
+ const rules=[
+  [/\\b(add|added|adding)\\b/gi,'додано'],[/\\b(fix|fixed|fixes|bugfix)\\b/gi,'виправлено'],[/\\b(update|updated|updating)\\b/gi,'оновлено'],[/\\b(remove|removed|delete|deleted)\\b/gi,'видалено'],[/\\b(improve|improved|improvement)\\b/gi,'покращено'],[/\\b(build|release)\\b/gi,'збірка'],[/\\b(test|tests)\\b/gi,'тести'],[/\\b(app|application)\\b/gi,'застосунок'],[/\\b(catalog|catalogue)\\b/gi,'каталог'],[/\\b(journal|log)\\b/gi,'журнал'],[/\\b(materials?)\\b/gi,'матеріали'],[/\\b(buttons?)\\b/gi,'кнопки'],[/\\b(screen|view)\\b/gi,'екран'],[/\\b(sync|synchronization)\\b/gi,'синхронізація'],[/\\b(version)\\b/gi,'версія'],[/\\b(working)\\b/gi,'роботу'],[/\\b(and)\\b/gi,'та'],[/\\b(for)\\b/gi,'для'],[/\\b(with)\\b/gi,'з']
+ ];
+ rules.forEach(([pattern,replacement])=>translated=translated.replace(pattern,replacement));
+ if(translated===source && /[a-z]/i.test(source))return 'Зміни: '+source;
+ return translated;
+}
 function codeEntry(commit,category){
  const info=commit.commit||{};
  const author=(commit.author&&commit.author.login)||(info.author&&info.author.name)||(info.committer&&info.committer.name)||'Автор GitHub';
- const message=String(info.message||'Зміна коду').split('\n')[0];
+ const message=translateCommitMessage(info.message,category);
  return {category,date:(info.author&&info.author.date)||(info.committer&&info.committer.date),actor:author,title:message,summary:category==='tests'?'Тести • study.js':'Застосунок • код',details:{commit:commit.sha,message:info.message,author:author,url:commit.html_url},url:commit.html_url,searchText:JSON.stringify({message,author,sha:commit.sha})};
 }
 async function fetchGitHubPath(path,category){
