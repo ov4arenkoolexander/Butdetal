@@ -29,6 +29,14 @@ if 'rememberPassword' in index or 'persistRememberedCredential' in index:
     print('ERROR: password persistence must stay disabled; store only the auth session')
     sys.exit(1)
 
+sync_start = index.find('async function syncButdetalRecords(){')
+sync_end = index.find('function localArchiveItems', sync_start)
+sync_code = index[sync_start:sync_end]
+for sync_guard in ("const localOnly=", "if(!accepted)", "pendingUploads.push(...localOnly)", "First sync: never silently discard local-only records"):
+    if sync_guard not in sync_code:
+        print(f'ERROR: first-sync data protection is missing: {sync_guard}')
+        sys.exit(1)
+
 for lang in ('ukr', 'rus', 'eng'):
     f = ROOT / 'app/src/main/assets/tessdata' / f'{lang}.traineddata'
     if not f.is_file() or f.stat().st_size < 100_000:

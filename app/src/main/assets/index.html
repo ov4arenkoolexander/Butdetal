@@ -815,15 +815,29 @@ async function syncButdetalRecords(){
   try{const saved=localStorage.getItem(snapshotKey);if(saved!==null)previousIds=new Set(JSON.parse(saved)||[])}catch(e){previousIds=null}
   const localById=new Map(local.filter(x=>x&&x.id).map(x=>[String(x.id),x]));
   const pendingUploads=[];
-  // Existing installations without a sync snapshot use the server as the first authoritative baseline.
-  // Later, only truly new local records (not present in the previous server snapshot) are uploaded.
   if(previousIds){
+   // Once a device has a server snapshot, missing remote IDs are deletions and stay deleted.
    for(const [id,here] of localById){
     if(!remoteById.has(id)&&!previousIds.has(id))pendingUploads.push(here);
     else if(remoteById.has(id)){
      const cloud=remoteById.get(id);
      if(Date.parse(here.updated||0)>Date.parse(cloud.updated||0))pendingUploads.push(here);
     }
+   }
+  }else{
+   // First sync: never silently discard local-only records or resurrect them without consent.
+   const localOnly=[...localById.entries()].filter(([id])=>!remoteById.has(id)).map(([,record])=>record);
+   if(localOnly.length&&remoteById.size){
+    const count=localOnly.length;
+    const accepted=confirm('Першу синхронізацію знайдено. На телефоні є '+count+' карток, яких немає на сервері.\\n\\nНатисни OK, щоб додати їх до спільного каталогу. Якщо натиснути «Скасувати», синхронізація зупиниться, а локальні картки залишаться на телефоні.');
+    if(!accepted){
+     if(status)status.textContent='Синхронізацію зупинено. Локальні картки збережені; повтори після вибору дії.';
+     return;
+    }
+    pendingUploads.push(...localOnly);
+   }else if(localOnly.length){
+    // An empty cloud catalog has no prior deletions to preserve; bootstrap it from this device.
+    pendingUploads.push(...localOnly);
    }
   }
   if(pendingUploads.length){
