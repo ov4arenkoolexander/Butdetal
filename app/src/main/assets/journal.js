@@ -17,13 +17,17 @@ function summarizeRecord(row){
  if(data.rebar)parts.push('армування '+data.rebar);
  return String(name)+(parts.length?' • '+parts.join(' • '):'');
 }
-function dbEntry(row){
+function dbEntry(row,session){
  const act=String(row.action||'').toUpperCase();
  const actionLabel=act==='INSERT'?'Додано':act==='UPDATE'?'Змінено':act==='DELETE'?'Видалено':act;
  const payload=row.new_data||row.old_data||{};
  const title=actionLabel+': '+summarizeRecord(payload);
  const detail={action:row.action,table:row.table_name,record_id:row.record_id,old_data:row.old_data,new_data:row.new_data};
- return {category:'catalog',date:row.changed_at||row.created_at,actor:row.actor_name||'Користувач',title,summary:'Каталог • '+(row.table_name||'запис'),details:detail,searchText:JSON.stringify(detail)};
+ const storedName=String(row.actor_name||'').trim();
+ const isEmail=/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(storedName);
+ const isCurrentUser=session&&row.actor_user_id&&String(row.actor_user_id)===String(session.user_id);
+ const actor=isCurrentUser?(session.display_name||'Поточний користувач'):(storedName&&!isEmail?storedName:'Працівник');
+ return {category:'catalog',date:row.changed_at||row.created_at,actor,title,summary:'Каталог • '+(row.table_name||'запис'),details:detail,searchText:JSON.stringify(detail)};
 }
 function translateCommitMessage(raw,category){
  const source=String(raw||'').split('\n')[0].trim();
@@ -50,7 +54,7 @@ function translateCommitMessage(raw,category){
 }
 function codeEntry(commit,category){
  const info=commit.commit||{};
- const author=(commit.author&&commit.author.login)||(info.author&&info.author.name)||(info.committer&&info.committer.name)||'Автор GitHub';
+ const author=(commit.author&&commit.author.login)||'Команда BUTDETAL';
  const message=translateCommitMessage(info.message,category);
  return {category,date:(info.author&&info.author.date)||(info.committer&&info.committer.date),actor:author,title:message,summary:category==='tests'?'Тести • study.js':'Застосунок • код',details:{commit:commit.sha,message:info.message,author:author,url:commit.html_url},url:commit.html_url,searchText:JSON.stringify({message,author,sha:commit.sha})};
 }
@@ -77,7 +81,7 @@ window.loadJournal=async function(){
  if(!s||!s.access_token){if(status)status.textContent='Увійди в BUTDETAL, щоб переглянути журнал.';return}
  const failures=[];
  const tasks=[
-  (async()=>{const rows=await sbRequest('/rest/v1/change_log?select=id,table_name,record_id,action,actor_user_id,actor_name,changed_at,old_data,new_data&order=changed_at.desc&limit=150');return (Array.isArray(rows)?rows:[]).map(dbEntry)})(),
+  (async()=>{const rows=await sbRequest('/rest/v1/change_log?select=id,table_name,record_id,action,actor_user_id,actor_name,changed_at,old_data,new_data&order=changed_at.desc&limit=150');const session=currentButdetalSession();return (Array.isArray(rows)?rows:[]).map(row=>dbEntry(row,session))})(),
   fetchGitHubPath('app/src/main/assets/index.html','app'),
   fetchGitHubPath('app/src/main/java/ua/budivelnyk/ua/MainActivity.java','app'),
   fetchGitHubPath('app/build.gradle','app'),
