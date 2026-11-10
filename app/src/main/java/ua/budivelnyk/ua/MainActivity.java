@@ -428,6 +428,23 @@ public class MainActivity extends Activity {
         @JavascriptInterface public String clearCredential() {
             boolean cleared=getSharedPreferences("butdetal_secure_v1",MODE_PRIVATE).edit().remove("credential").commit();return cleared?"OK":"Не вдалося видалити збережений пароль";
         }
+        @JavascriptInterface public String saveSession(String sessionJson) {
+            try {
+                new JSONObject(sessionJson);
+                boolean saved=getSharedPreferences("butdetal_secure_v1",MODE_PRIVATE).edit().putString("session",encryptCredential(sessionJson)).commit();
+                return saved?"OK":"Не вдалося зберегти сесію у захищеному сховищі";
+            } catch(Exception e) { return "Помилка захищеного збереження сесії: "+e.getMessage(); }
+        }
+        @JavascriptInterface public String getSession() {
+            try {
+                String value=getSharedPreferences("butdetal_secure_v1",MODE_PRIVATE).getString("session",null);
+                return value==null?"":decryptCredential(value);
+            } catch(Exception e) { return ""; }
+        }
+        @JavascriptInterface public String clearSession() {
+            boolean cleared=getSharedPreferences("butdetal_secure_v1",MODE_PRIVATE).edit().remove("session").commit();
+            return cleared?"OK":"Не вдалося очистити захищену сесію";
+        }
         @JavascriptInterface public String saveDocument(String name,String mime,String base64) {
             try {
                 File root=getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS);if(root==null)root=new File(getFilesDir(),"Documents");
