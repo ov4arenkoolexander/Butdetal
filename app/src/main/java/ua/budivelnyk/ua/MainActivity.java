@@ -1,6 +1,16 @@
 package ua.budivelnyk.ua;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.print.PrintManager;
+import android.print.PrintDocumentAdapter;
+import android.print.PrintDocumentInfo;
+import android.print.PrintAttributes;
+import android.print.PageRange;
+import android.print.WriteResultCallback;
+import android.print.LayoutResultCallback;
+import android.print.pdf.PrintedPdfDocument;
+import android.os.CancellationSignal;
 import android.content.Intent;
 import android.content.ContentValues;
 import android.provider.MediaStore;
@@ -466,6 +476,75 @@ public class MainActivity extends Activity {
                 if (insertedUri != null) try { getContentResolver().delete(insertedUri, null, null); } catch (Exception ignored) {}
                 return "Помилка збереження PNG: " + e.getMessage();
             }
+        }
+        private Bitmap renderSeriesPageBitmap(String relativePath, int pageIndex) throws Exception {
+            File source = seriesCatalogManager.resolve(relativePath);
+            if (source == null || !source.isFile()) throw new IOException("PDF не знайдено");
+            try (ParcelFileDescriptor pfd = ParcelFileDescriptor.open(source, ParcelFileDescriptor.MODE_READ_ONLY);
+                 PdfRenderer renderer = new PdfRenderer(pfd)) {
+                if (pageIndex < 0 || pageIndex >= renderer.getPageCount()) throw new IOException("Неправильний номер сторінки");
+                try (PdfRenderer.Page page = renderer.openPage(pageIndex)) {
+                    float scale = Math.min(3.0f, 2400.0f / Math.max(1, page.getWidth()));
+                    int width = Math.max(1, Math.round(page.getWidth() * scale));
+                    int height = Math.max(1, Math.round(page.getHeight() * scale));
+                    if ((long) width * height > 12000000L) {
+                        float down = (float)Math.sqrt(12000000.0 / ((long)width * height));
+                        width = Math.max(1, Math.round(width * down)); height = Math.max(1, Math.round(height * down)); scale *= down;
+                    }
+                    Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+                    android.graphics.Matrix matrix = new android.graphics.Matrix(); matrix.setScale(scale, scale);
+                    page.render(bitmap, null, matrix, PdfRenderer.Page.RENDER_MODE_FOR_PRINT);
+                    return bitmap;
+                }
+            }
+        }
+        @JavascriptInterface public String sendSeriesPdfPage(String relativePath, int pageIndex, String title) {
+            try {
+                final Bitmap bitmap = renderSeriesPageBitmap(relativePath, pageIndex);
+                runOnUiThread(() -> new AlertDialog.Builder(MainActivity.this)
+                    .setTitle("Сторінка " + (pageIndex + 1))
+                    .setItems(new String[]{"Друк поточної сторінки", "Поділитися зображенням"}, (dialog, which) -> {
+                        if (which == 0) {
+                            PrintManager manager = (PrintManager)getSystemService(PRINT_SERVICE);
+                            String jobName = (title == null || title.trim().isEmpty() ? "BUTDETAL" : title) + " — сторінка " + (pageIndex + 1);
+                            manager.print(jobName, new PrintDocumentAdapter() {
+                                private PrintedPdfDocument document;
+                                @Override public void onLayout(PrintAttributes oldAttributes, PrintAttributes newAttributes, CancellationSignal cancellationSignal, LayoutResultCallback callback, android.os.Bundle extras) {
+                                    if (cancellationSignal.isCanceled()) { callback.onLayoutCancelled(); return; }
+                                    document = new PrintedPdfDocument(MainActivity.this, newAttributes);
+                                    PrintDocumentInfo info = new PrintDocumentInfo.Builder("BUTDETAL_page_" + (pageIndex + 1) + ".pdf").setContentType(PrintDocumentInfo.CONTENT_TYPE_DOCUMENT).setPageCount(1).build();
+                                    callback.onLayoutFinished(info, !newAttributes.equals(oldAttributes));
+                                }
+                                @Override public void onWrite(PageRange[] pages, ParcelFileDescriptor destination, CancellationSignal cancellationSignal, WriteResultCallback callback) {
+                                    try {
+                                        if (cancellationSignal.isCanceled()) { callback.onWriteCancelled(); return; }
+                                        android.graphics.pdf.PdfDocument.Page page = document.startPage(1);
+                                        android.graphics.Rect content = page.getInfo().getContentRect();
+                                        float scale = Math.min(content.width() / (float)bitmap.getWidth(), content.height() / (float)bitmap.getHeight());
+                                        float w = bitmap.getWidth() * scale, h = bitmap.getHeight() * scale;
+                                        float left = content.left + (content.width() - w) / 2f, top = content.top + (content.height() - h) / 2f;
+                                        android.graphics.Paint paint = new android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG);
+                                        page.getCanvas().drawBitmap(bitmap, null, new android.graphics.RectF(left, top, left + w, top + h), paint);
+                                        document.finishPage(page);
+                                        try (FileOutputStream out = new FileOutputStream(destination.getFileDescriptor())) { document.writeTo(out); }
+                                        callback.onWriteFinished(new PageRange[]{PageRange.ALL_PAGES});
+                                    } catch (Exception e) { callback.onWriteFailed(e.getMessage()); }
+                                    finally { if (document != null) document.close(); if (!bitmap.isRecycled()) bitmap.recycle(); }
+                                }
+                            }, new PrintAttributes.Builder().setMediaSize(PrintAttributes.MediaSize.ISO_A4).setResolution(new PrintAttributes.Resolution("butdetal","BUTDETAL",300,300)).setMinMargins(PrintAttributes.Margins.NO_MARGINS).build());
+                        } else {
+                            try {
+                                File shareFile = new File(getFilesDir(), "butdetal_share_page_" + System.currentTimeMillis() + ".png");
+                                try (FileOutputStream out = new FileOutputStream(shareFile)) { bitmap.compress(Bitmap.CompressFormat.PNG, 100, out); }
+                                Uri uri = FileProvider.getUriForFile(MainActivity.this, getPackageName() + ".provider", shareFile);
+                                Intent share = new Intent(Intent.ACTION_SEND); share.setType("image/png"); share.putExtra(Intent.EXTRA_STREAM, uri); share.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                                startActivity(Intent.createChooser(share, "Надіслати сторінку"));
+                            } catch (Exception e) { new AlertDialog.Builder(MainActivity.this).setMessage("Помилка надсилання: " + e.getMessage()).setPositiveButton("OK", null).show(); }
+                            finally { if (!bitmap.isRecycled()) bitmap.recycle(); }
+                        }
+                    }).setOnCancelListener(d -> { if (!bitmap.isRecycled()) bitmap.recycle(); }).show());
+                return "OK";
+            } catch (Exception e) { return "Помилка підготовки сторінки: " + e.getMessage(); }
         }
         @JavascriptInterface public String openSeriesPdf(String relativePath) {
             try {
