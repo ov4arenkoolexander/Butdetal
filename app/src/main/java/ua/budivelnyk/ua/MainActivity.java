@@ -608,6 +608,21 @@ public class MainActivity extends Activity {
                 return "OK";
             } catch(Exception e){return "Помилка збереження: "+e.getMessage();}
         }
+        @JavascriptInterface public String shareArchiveImage(String dataUrl, String title) {
+            try {
+                byte[] raw = decodeData(dataUrl);
+                File shareFile = new File(getCacheDir(), "butdetal_drawing_" + System.currentTimeMillis() + ".jpg");
+                try (FileOutputStream out = new FileOutputStream(shareFile)) { out.write(raw); }
+                Uri uri = FileProvider.getUriForFile(MainActivity.this, getPackageName() + ".provider", shareFile);
+                Intent intent = new Intent(Intent.ACTION_SEND);
+                intent.setType("image/jpeg");
+                intent.putExtra(Intent.EXTRA_STREAM, uri);
+                intent.putExtra(Intent.EXTRA_SUBJECT, title == null ? "Креслення BUTDETAL" : title);
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                runOnUiThread(() -> startActivity(Intent.createChooser(intent, "Відправити креслення")));
+                return "OK";
+            } catch (Exception e) { return "Помилка надсилання: " + e.getMessage(); }
+        }
         @JavascriptInterface public String listImages(String c) {
             JSONArray arr=new JSONArray(); File[] files=folder(c).listFiles((d,n)->n.toLowerCase(Locale.ROOT).endsWith(".jpg"));
             if(files==null)return arr.toString();
