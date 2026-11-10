@@ -30,10 +30,10 @@ jobs:
 
           assets = Path("app/src/main/assets")
           html = (assets / "index.html").read_text(encoding="utf-8")
-          scripts = re.findall(r'<script\\b([^>]*)>(.*?)</script\\s*>', html, re.I | re.S)
+          scripts = re.findall(r'<script\b([^>]*)>(.*?)</script\s*>', html, re.I | re.S)
           count = 0
           for attrs, code in scripts:
-              if re.search(r'\\bsrc\\s*=', attrs, re.I) or not code.strip():
+              if re.search(r'\bsrc\s*=', attrs, re.I) or not code.strip():
                   continue
               count += 1
               subprocess.run(["node", "--check"], input=code, text=True, check=True)
