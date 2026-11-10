@@ -55,7 +55,7 @@ footer{text-align:center;color:#8390a0;font-size:12px;padding:24px}
 </style>
 </head>
 <body>
-<header><small>ОФЛАЙН-ДОВІДНИК • ВЕРСІЯ 2.0.63 • CLOUD SYNC + OFFLINE</small><h1><svg viewBox="0 0 64 64" width="46" height="46" style="vertical-align:middle;margin-right:8px" aria-label="BUTDETAL"><path fill="#ffc400" d="M7 9h50v3H7zM16 12v29h3V12zm31 0v29h3V12zM17 18h33v2H17z"/><path fill="none" stroke="#ffc400" stroke-width="2.5" d="M32 12v39m-5 0h10M32 12l10 0 5 5M32 12l-10 0-5 5"/><path fill="#d5dee8" d="M6 43l16-5v11L6 54zm19-6l16-5v11l-16 5zm19-6l14-4v11l-14 4z"/><path fill="#ffc400" d="M6 56l53-15v4L6 60z"/></svg>BUTDETAL</h1><p>Довідник для будівельника • Формули, бетон, арматура</p><button class="btn" style="background:#c9e7a3;color:#173f35" onclick="checkAppUpdate()">Перевірити оновлення</button><p id="updateStatus" class="muted" style="color:#e3eee8" aria-live="polite">Перевірка оновлень — вручну</p></header>
+<header><small>ОФЛАЙН-ДОВІДНИК • ВЕРСІЯ 2.0.64 • CLOUD SYNC + OFFLINE</small><h1><svg viewBox="0 0 64 64" width="46" height="46" style="vertical-align:middle;margin-right:8px" aria-label="BUTDETAL"><path fill="#ffc400" d="M7 9h50v3H7zM16 12v29h3V12zm31 0v29h3V12zM17 18h33v2H17z"/><path fill="none" stroke="#ffc400" stroke-width="2.5" d="M32 12v39m-5 0h10M32 12l10 0 5 5M32 12l-10 0-5 5"/><path fill="#d5dee8" d="M6 43l16-5v11L6 54zm19-6l16-5v11l-16 5zm19-6l14-4v11l-14 4z"/><path fill="#ffc400" d="M6 56l53-15v4L6 60z"/></svg>BUTDETAL</h1><p>Довідник для будівельника • Формули, бетон, арматура</p><button class="btn" style="background:#c9e7a3;color:#173f35" onclick="checkAppUpdate()">Перевірити оновлення</button><p id="updateStatus" class="muted" style="color:#e3eee8" aria-live="polite">Перевірка оновлень — вручну</p></header>
 
 <section id="authGate" class="auth-panel auth-checking">
 <h2>🔐 Вхід до BUTDETAL</h2>
@@ -777,7 +777,7 @@ async function signInButdetal(){
   if(document.getElementById('rememberUser').checked)localStorage.setItem('butdetal_remember_user_v1',JSON.stringify({email,displayName}));else localStorage.removeItem('butdetal_remember_user_v1');
   if(window.AndroidStorage&&AndroidStorage.clearCredential)AndroidStorage.clearCredential();
   const session={access_token:d.access_token,refresh_token:d.refresh_token,expires_at:Date.now()+(d.expires_in||3600)*1000,user_id:d.user.id,email:d.user.email,role:profile.role,display_name:profile.role==='admin'?(profile.display_name||'Адміністратор'):displayName};
-  persist login session securelyauthMsg('');setButdetalWorkspace(session,true);
+  persistButdetalSession(session);document.getElementById('authPassword').value='';authMsg('');setButdetalWorkspace(session,true);
  }catch(e){authMsg(e.message||'Помилка входу.',true)}
 }
 async function restoreButdetalSession(){
