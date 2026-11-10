@@ -18,8 +18,8 @@ android {
         applicationId 'ua.budivelnyk.ua'
         minSdk 23
         targetSdk 35
-        versionCode 70
-        versionName '2.0.69'
+        versionCode 71
+        versionName '2.0.70'
     }
     buildTypes {
         release {
