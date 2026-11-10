@@ -7,8 +7,6 @@ import android.print.PrintDocumentAdapter;
 import android.print.PrintDocumentInfo;
 import android.print.PrintAttributes;
 import android.print.PageRange;
-import android.print.WriteResultCallback;
-import android.print.LayoutResultCallback;
 import android.print.pdf.PrintedPdfDocument;
 import android.os.CancellationSignal;
 import android.content.Intent;
@@ -509,13 +507,13 @@ public class MainActivity extends Activity {
                             String jobName = (title == null || title.trim().isEmpty() ? "BUTDETAL" : title) + " — сторінка " + (pageIndex + 1);
                             manager.print(jobName, new PrintDocumentAdapter() {
                                 private PrintedPdfDocument document;
-                                @Override public void onLayout(PrintAttributes oldAttributes, PrintAttributes newAttributes, CancellationSignal cancellationSignal, LayoutResultCallback callback, android.os.Bundle extras) {
+                                @Override public void onLayout(PrintAttributes oldAttributes, PrintAttributes newAttributes, CancellationSignal cancellationSignal, PrintDocumentAdapter.LayoutResultCallback callback, android.os.Bundle extras) {
                                     if (cancellationSignal.isCanceled()) { callback.onLayoutCancelled(); return; }
                                     document = new PrintedPdfDocument(MainActivity.this, newAttributes);
                                     PrintDocumentInfo info = new PrintDocumentInfo.Builder("BUTDETAL_page_" + (pageIndex + 1) + ".pdf").setContentType(PrintDocumentInfo.CONTENT_TYPE_DOCUMENT).setPageCount(1).build();
                                     callback.onLayoutFinished(info, !newAttributes.equals(oldAttributes));
                                 }
-                                @Override public void onWrite(PageRange[] pages, ParcelFileDescriptor destination, CancellationSignal cancellationSignal, WriteResultCallback callback) {
+                                @Override public void onWrite(PageRange[] pages, ParcelFileDescriptor destination, CancellationSignal cancellationSignal, PrintDocumentAdapter.WriteResultCallback callback) {
                                     try {
                                         if (cancellationSignal.isCanceled()) { callback.onWriteCancelled(); return; }
                                         android.graphics.pdf.PdfDocument.Page page = document.startPage(1);
