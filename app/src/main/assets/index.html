@@ -234,6 +234,8 @@ footer{text-align:center;color:#8390a0;font-size:12px;padding:24px}
 // Bind immediately (the controls already exist here); do not depend on DOMContentLoaded,
 // which can be missed by WebView reloads or page restoration.
 function bindAuthActions(){
+ const update=document.querySelector('header button');
+ if(update&&!update.dataset.updateBound){update.dataset.updateBound='1';update.onclick=()=>{try{Promise.resolve(checkAppUpdate()).catch(e=>{const box=document.getElementById('updateStatus');if(box)box.textContent='Помилка перевірки оновлення: '+(e.message||e)})}catch(e){const box=document.getElementById('updateStatus');if(box)box.textContent='Помилка перевірки оновлення: '+(e.message||e)}}}
  const save=document.getElementById('saveSupabaseConfigButton');
  const login=document.getElementById('signInButdetalButton');
  if(save&&!save.dataset.bound){
