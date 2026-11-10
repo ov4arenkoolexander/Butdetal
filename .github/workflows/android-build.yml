@@ -46,7 +46,7 @@ jobs:
       - name: Test WebView button interactions
         run: |
           npm install --no-save --package-lock=false playwright
-          npx playwright install --with-deps chromium
+          npx playwright install chromium
           node scripts/webview-smoke.mjs
       - name: Build debug APK
         run: gradle assembleDebug --no-daemon
