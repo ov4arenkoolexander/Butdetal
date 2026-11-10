@@ -69,3 +69,9 @@ if 'createButdetalBackup' not in index or 'restoreButdetalBackup' not in index:
 
 print(f'Static checks passed: Android bridge, OCR data, backup/restore, app assets, and in-app updater {version.group(1)}.')
 print('NOTE: This does not prove Gradle compilation or runtime OCR correctness.')
+
+# Regression guards for BUTDETAL 2.0.67.
+for guard in ("productMetaChip('Армування',x.rebar)", "window.handleNativeBack=handleNativeBack", "function rememberButdetalNavigation", "detail.code==='NoSuchKey'", "if(!blob){missing++;continue}", "scroll-behavior:auto"):
+    if guard not in index:
+        print(f'ERROR: missing 2.0.67 regression guard: {guard}')
+        sys.exit(1)
