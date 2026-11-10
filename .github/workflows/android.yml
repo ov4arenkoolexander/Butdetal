@@ -2,7 +2,7 @@ name: Build and publish BUTDETAL APK
 
 on:
   push:
-    branches: [main, feature/series-catalog-import]
+    branches: [main, feature/series-catalog-import, feature/catalog-volume-rebar-2.0.60]
     tags: ['v*']
   pull_request:
     branches: [main]
