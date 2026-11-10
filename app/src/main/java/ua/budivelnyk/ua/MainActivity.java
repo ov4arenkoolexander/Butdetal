@@ -2,6 +2,8 @@ package ua.budivelnyk.ua;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.ContentValues;
+import android.provider.MediaStore;
 import android.content.ClipData;
 import android.net.Uri;
 import android.os.Bundle;
@@ -400,6 +402,70 @@ public class MainActivity extends Activity {
                     }
                 }
             } catch (Exception e) { return ""; }
+        }
+        @JavascriptInterface public String saveSeriesPdfPageAsImage(String relativePath, int pageIndex, String title) {
+            Uri insertedUri = null;
+            try {
+                File source = seriesCatalogManager.resolve(relativePath);
+                if (source == null || !source.isFile()) return "PDF не знайдено";
+                Bitmap bitmap;
+                try (ParcelFileDescriptor pfd = ParcelFileDescriptor.open(source, ParcelFileDescriptor.MODE_READ_ONLY);
+                     PdfRenderer renderer = new PdfRenderer(pfd)) {
+                    if (pageIndex < 0 || pageIndex >= renderer.getPageCount()) return "Неправильний номер сторінки";
+                    try (PdfRenderer.Page page = renderer.openPage(pageIndex)) {
+                        float scale = Math.min(4.0f, 2400.0f / Math.max(1, page.getWidth()));
+                        int width = Math.max(1, Math.round(page.getWidth() * scale));
+                        int height = Math.max(1, Math.round(page.getHeight() * scale));
+                        if ((long) width * height > 16_000_000L) {
+                            float down = (float) Math.sqrt(16_000_000.0 / ((long) width * height));
+                            width = Math.max(1, Math.round(width * down));
+                            height = Math.max(1, Math.round(height * down));
+                            scale *= down;
+                        }
+                        bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+                        android.graphics.Matrix matrix = new android.graphics.Matrix();
+                        matrix.setScale(scale, scale);
+                        page.render(bitmap, null, matrix, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
+                    }
+                }
+                String baseName = safeName(title == null || title.trim().isEmpty() ? "BUTDETAL" : title.trim());
+                baseName = baseName.replaceAll("(?i)\\.pdf$", "");
+                String fileName = baseName + "_сторінка_" + (pageIndex + 1) + "_" +
+                    new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".png";
+                try {
+                    if (Build.VERSION.SDK_INT >= 29) {
+                        ContentValues values = new ContentValues();
+                        values.put(MediaStore.Images.Media.DISPLAY_NAME, fileName);
+                        values.put(MediaStore.Images.Media.MIME_TYPE, "image/png");
+                        values.put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/BUTDETAL");
+                        values.put(MediaStore.Images.Media.IS_PENDING, 1);
+                        insertedUri = getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+                        if (insertedUri == null) throw new IOException("Не вдалося створити файл у галереї");
+                        try (OutputStream out = getContentResolver().openOutputStream(insertedUri)) {
+                            if (out == null) throw new IOException("Не вдалося відкрити файл зображення");
+                            if (!bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)) throw new IOException("Не вдалося записати PNG");
+                        }
+                        values.clear();
+                        values.put(MediaStore.Images.Media.IS_PENDING, 0);
+                        getContentResolver().update(insertedUri, values, null, null);
+                    } else {
+                        File root = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+                        if (root == null) root = new File(getFilesDir(), "Pictures");
+                        File dir = new File(root, "BUTDETAL");
+                        if (!dir.exists() && !dir.mkdirs()) throw new IOException("Не вдалося створити папку зображень");
+                        File target = new File(dir, fileName);
+                        try (FileOutputStream out = new FileOutputStream(target)) {
+                            if (!bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)) throw new IOException("Не вдалося записати PNG");
+                        }
+                    }
+                } finally {
+                    if (!bitmap.isRecycled()) bitmap.recycle();
+                }
+                return "OK";
+            } catch (Exception e) {
+                if (insertedUri != null) try { getContentResolver().delete(insertedUri, null, null); } catch (Exception ignored) {}
+                return "Помилка збереження PNG: " + e.getMessage();
+            }
         }
         @JavascriptInterface public String openSeriesPdf(String relativePath) {
             try {
