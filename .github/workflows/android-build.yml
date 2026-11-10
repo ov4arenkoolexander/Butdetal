@@ -21,6 +21,28 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.9"
+      - name: Validate JavaScript syntax
+        run: |
+          python3 - <<'PY'
+          import re
+          import subprocess
+          from pathlib import Path
+
+          assets = Path("app/src/main/assets")
+          html = (assets / "index.html").read_text(encoding="utf-8")
+          scripts = re.findall(r'<script\\b([^>]*)>(.*?)</script\\s*>', html, re.I | re.S)
+          count = 0
+          for attrs, code in scripts:
+              if re.search(r'\\bsrc\\s*=', attrs, re.I) or not code.strip():
+                  continue
+              count += 1
+              subprocess.run(["node", "--check"], input=code, text=True, check=True)
+          for name in ("study.js", "journal.js"):
+              path = assets / name
+              if path.exists():
+                  subprocess.run(["node", "--check", str(path)], check=True)
+          print(f"Validated {count} inline JavaScript blocks and external scripts.")
+          PY
       - name: Build debug APK
         run: gradle assembleDebug --no-daemon
       - name: Upload APK
