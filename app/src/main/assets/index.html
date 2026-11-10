@@ -607,7 +607,8 @@ function renderProductCatalog(){
   const badge=x.seriesType?'<span class="product-series-badge '+(x.seriesType==='serial'?'serial':x.seriesType==='nonserial'?'nonserial':'')+'">'+productSeriesLabel(x)+'</span>':'';
   const meta=[
    productMetaChip('Розміри',x.dimensions),
-   productMetaChip('Об’єм',x.volume,' м³/шт.'),
+   productMetaChip('Об’єм бетону за проєктом',x.volume,' м³/шт.'),
+   productMetaChip('Армування',x.rebar),
    productMetaChip('Бетон',x.concreteGrade),
    productMetaChip('Каркас',x.cageMark),
    productMetaChip('Серія',x.series),
@@ -628,6 +629,26 @@ function productDetailRow(label,value,suffix=''){
  const v=productDisplayValue(value);if(!v)return '';
  return '<div class="product-detail-row"><span>'+safeText(label)+'</span><b>'+safeText(v+suffix)+'</b></div>';
 }
+function parseProductGeometryDimensions(value){
+ const m=String(value||'').match(/(\\d+(?:[.,]\\d+)?)\\s*[×xх*]\\s*(\\d+(?:[.,]\\d+)?)\\s*[×xх*]\\s*(\\d+(?:[.,]\\d+)?)/i);
+ if(!m)return {length:'',width:'',height:''};
+ return {length:m[1].replace(',','.'),width:m[2].replace(',','.'),height:m[3].replace(',','.')};
+}
+function productGeometryVolume(){
+ const l=Number(document.getElementById('geometryLength')?.value),w=Number(document.getElementById('geometryWidth')?.value),h=Number(document.getElementById('geometryHeight')?.value);
+ const out=document.getElementById('geometryVolumeResult');
+ if(!out)return;
+ if(l>0&&w>0&&h>0)out.textContent=(l*w*h/1000000000).toLocaleString('uk-UA',{minimumFractionDigits:3,maximumFractionDigits:4})+' м³';
+ else out.textContent='Вкажи всі три розміри';
+}
+function saveProductGeometryDimensions(){
+ const a=Number(document.getElementById('geometryLength')?.value),b=Number(document.getElementById('geometryWidth')?.value),c=Number(document.getElementById('geometryHeight')?.value);
+ if(!(a>0&&b>0&&c>0)){alert('Вкажи довжину, ширину та висоту в міліметрах.');return}
+ const records=productRecords(),i=records.findIndex(v=>v.id===currentProductId);if(i<0)return;
+ records[i].dimensions=[a,b,c].join('×');records[i].updated=new Date().toISOString();saveProductRecords(records);
+ syncButdetalRecords().catch(e=>console.warn('Sync dimensions:',e));
+ viewProductCard(currentProductId);
+}
 function viewProductCard(id){
  let x=productRecords().find(v=>v.id===id);if(!x)return;
  currentProductId=id;
@@ -645,13 +666,15 @@ function viewProductCard(id){
   productDetailRow('Інші позначення',x.aliases),
   productDetailRow('Тип виробу',x.type),
   productDetailRow('Розміри (мм)',x.dimensions),
-  productDetailRow('Об’єм одного виробу',x.volume,' м³/шт.'),
+  productDetailRow('Об’єм бетону за проєктом',x.volume,' м³/шт.'),
   productDetailRow('Марка бетону',x.concreteGrade),
   productDetailRow('Армування / специфікація',x.rebar),
   productDetailRow('Додаткові примітки',x.notes)
  ].filter(Boolean).join('');
  let html='<div class="product-detail-hero" style="'+productCardBackground(x)+'"><h2>'+safeText(title)+'</h2>'+badge+'</div>';
  if(rows)html+='<div class="product-detail-grid">'+rows+'</div>';
+ const dims=parseProductGeometryDimensions(x.dimensions);
+ html+='<div class="card"><h3>Геометричний об’єм за габаритами</h3><p class="muted">Розрахунок прямокутного об’єму за зовнішніми розмірами. Порожнини не віднімаються; це не фактична витрата бетону.</p><div class="grid-2"><div><label>Довжина, мм</label><input id="geometryLength" type="number" min="1" step="1" value="'+safeText(dims.length)+'" oninput="productGeometryVolume()"></div><div><label>Ширина, мм</label><input id="geometryWidth" type="number" min="1" step="1" value="'+safeText(dims.width)+'" oninput="productGeometryVolume()"></div><div><label>Висота, мм</label><input id="geometryHeight" type="number" min="1" step="1" value="'+safeText(dims.height)+'" oninput="productGeometryVolume()"></div></div><p><b>Геометричний об’єм: <span id="geometryVolumeResult">—</span></b></p><button type="button" class="btn" onclick="saveProductGeometryDimensions()">Зберегти розміри</button></div>';
  if(photos.length)html+='<h3>📷 Фото виробу ('+photos.length+')</h3>'+renderLinkedImages(photos);
  if(drawings.length)html+='<h3>📐 Креслення та армування ('+drawings.length+')</h3>'+renderLinkedImages(drawings);
  document.getElementById('detailBody').innerHTML=html;
