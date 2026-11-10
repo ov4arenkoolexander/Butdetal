@@ -43,6 +43,11 @@ jobs:
                   subprocess.run(["node", "--check", str(path)], check=True)
           print(f"Validated {count} inline JavaScript blocks and external scripts.")
           PY
+      - name: Test WebView button interactions
+        run: |
+          npm install --no-save --package-lock=false playwright
+          npx playwright install --with-deps chromium
+          node scripts/webview-smoke.mjs
       - name: Build debug APK
         run: gradle assembleDebug --no-daemon
       - name: Upload APK
