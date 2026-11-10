@@ -24,7 +24,7 @@ table{width:100%;border-collapse:collapse;font-size:14px;color:#e4e9ef}td,th{tex
 .item{padding:12px 0;border-bottom:1px solid var(--line)}.item:last-child{border:0}
 footer{text-align:center;color:#8390a0;font-size:12px;padding:24px}
 .folder-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:12px 0}.folder-tile{border:1px solid #3a4a5f;border-radius:15px;padding:14px;background:#202d3d;text-align:left;color:var(--text)}.folder-tile b{display:block;margin:7px 0;color:#fff}.folder-tile span{font-size:12px;color:#aab6c5}.photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(135px,1fr));gap:10px;margin-top:12px}.photo-card{border:1px solid #39485b;border-radius:13px;padding:8px;background:#1c2837;min-width:0}.photo-card img{width:100%;height:125px;object-fit:contain;background:#101925;border-radius:8px;display:block}.photo-card h3{margin:8px 0 4px;overflow-wrap:anywhere}.photo-actions{display:flex;gap:6px}.photo-actions button{font-size:12px;padding:9px 5px;margin-top:8px}
-.auth-panel{position:relative;z-index:5;pointer-events:auto;touch-action:manipulation;max-width:520px;margin:20px auto;padding:20px;background:linear-gradient(145deg,#1d2938,#121b27);border:1px solid #3c4c61;border-radius:20px;box-shadow:0 14px 35px #0006}.auth-panel h2{margin:0 0 8px;color:#ffc400}.auth-panel .btn{margin-top:12px}.auth-status{font-size:13px;line-height:1.45;margin-top:12px;color:var(--muted)}.auth-user{font-size:13px;color:#dcebe5;margin-top:8px}.auth-actions{display:flex;gap:8px}.auth-actions .btn{flex:1}
+.auth-panel{position:relative;z-index:5;pointer-events:auto;touch-action:manipulation;max-width:520px;margin:20px auto;padding:20px;background:linear-gradient(145deg,#1d2938,#121b27);border:1px solid #3c4c61;border-radius:20px;box-shadow:0 14px 35px #0006}.auth-checking{visibility:hidden}.auth-panel h2{margin:0 0 8px;color:#ffc400}.auth-panel .btn{margin-top:12px}.auth-status{font-size:13px;line-height:1.45;margin-top:12px;color:var(--muted)}.auth-user{font-size:13px;color:#dcebe5;margin-top:8px}.auth-actions{display:flex;gap:8px}.auth-actions .btn{flex:1}
 @media(min-width:600px){header{padding-left:max(22px,calc((100% - 720px)/2));padding-right:max(22px,calc((100% - 720px)/2))}}
 
 .home-welcome{position:relative;overflow:hidden;padding:23px 20px;margin:2px 0 16px;border-radius:21px;background:linear-gradient(115deg,#27384b,#172536 68%,#334052);border:1px solid #526176;box-shadow:0 12px 28px #0005}.home-welcome:after{content:"";position:absolute;width:180px;height:180px;border:24px solid #ffc40017;border-radius:50%;right:-55px;top:-55px}.eyebrow{font-size:10px;letter-spacing:1.8px;font-weight:800;color:#ffc400}.home-welcome h2{font-size:27px;line-height:1.12;margin:10px 0}.home-welcome h2 em{font-style:normal;color:#ffd044}.home-welcome p{font-size:13px;color:#c4ced9;max-width:245px;margin:0}.home-mark{position:absolute;right:24px;bottom:18px;font-size:56px;font-weight:900;color:#ffffff13}.home-mark span{color:#ffc400; font-size:30px}.home-shortcuts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:14px}.home-shortcuts>.card:first-child{grid-column:1/-1;min-width:0}.home-shortcuts>.card:first-child .btn{white-space:normal;overflow-wrap:anywhere}.shortcut{min-width:0;padding:12px 5px;border:1px solid #39495d;border-radius:14px;background:linear-gradient(145deg,#202e3e,#151f2c);color:#f3f5f7;text-align:center}.shortcut-icon{display:block;font-size:23px;color:#ffc400;margin-bottom:5px}.shortcut b,.shortcut small{display:block}.shortcut b{font-size:12px}.shortcut small{font-size:9px;color:#aeb9c7;margin-top:4px}.section-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}.section-heading h2{margin:4px 0 0}.section-symbol{font-size:25px;color:#ffc400;border:1px solid #66551e;background:#3a321d;border-radius:11px;padding:5px 10px}.tool-tile{border:1px solid #405168;border-radius:14px;background:#202d3d;color:#f4f6f8;padding:13px 9px;text-align:left}.tool-tile b,.tool-tile small{display:block}.tool-tile b{font-size:13px;margin:7px 0 4px}.tool-tile small{font-size:10px;color:#abb8c8}.tool-art{font-size:25px;color:#ffc400}.online-dot{width:9px;height:9px;background:#35c875;border-radius:50%;box-shadow:0 0 0 5px #35c87520}.sync-line{border:1px solid #35465b;border-radius:10px;padding:10px 12px;color:#d7e1ec;font-size:13px;background:#101a26}.catalog-home .search{margin-top:6px}.item[onclick]{cursor:pointer}.item[onclick]:active{background:#ffffff08}
@@ -55,9 +55,9 @@ footer{text-align:center;color:#8390a0;font-size:12px;padding:24px}
 </style>
 </head>
 <body>
-<header><small>ОФЛАЙН-ДОВІДНИК • ВЕРСІЯ 2.0.60 • CLOUD SYNC + OFFLINE</small><h1><svg viewBox="0 0 64 64" width="46" height="46" style="vertical-align:middle;margin-right:8px" aria-label="BUTDETAL"><path fill="#ffc400" d="M7 9h50v3H7zM16 12v29h3V12zm31 0v29h3V12zM17 18h33v2H17z"/><path fill="none" stroke="#ffc400" stroke-width="2.5" d="M32 12v39m-5 0h10M32 12l10 0 5 5M32 12l-10 0-5 5"/><path fill="#d5dee8" d="M6 43l16-5v11L6 54zm19-6l16-5v11l-16 5zm19-6l14-4v11l-14 4z"/><path fill="#ffc400" d="M6 56l53-15v4L6 60z"/></svg>BUTDETAL</h1><p>Довідник для будівельника • Формули, бетон, арматура</p><button class="btn" style="background:#c9e7a3;color:#173f35" onclick="checkAppUpdate()">Перевірити оновлення</button><p id="updateStatus" class="muted" style="color:#e3eee8" aria-live="polite">Перевірка оновлень — вручну</p></header>
+<header><small>ОФЛАЙН-ДОВІДНИК • ВЕРСІЯ 2.0.61 • CLOUD SYNC + OFFLINE</small><h1><svg viewBox="0 0 64 64" width="46" height="46" style="vertical-align:middle;margin-right:8px" aria-label="BUTDETAL"><path fill="#ffc400" d="M7 9h50v3H7zM16 12v29h3V12zm31 0v29h3V12zM17 18h33v2H17z"/><path fill="none" stroke="#ffc400" stroke-width="2.5" d="M32 12v39m-5 0h10M32 12l10 0 5 5M32 12l-10 0-5 5"/><path fill="#d5dee8" d="M6 43l16-5v11L6 54zm19-6l16-5v11l-16 5zm19-6l14-4v11l-14 4z"/><path fill="#ffc400" d="M6 56l53-15v4L6 60z"/></svg>BUTDETAL</h1><p>Довідник для будівельника • Формули, бетон, арматура</p><button class="btn" style="background:#c9e7a3;color:#173f35" onclick="checkAppUpdate()">Перевірити оновлення</button><p id="updateStatus" class="muted" style="color:#e3eee8" aria-live="polite">Перевірка оновлень — вручну</p></header>
 
-<section id="authGate" class="auth-panel">
+<section id="authGate" class="auth-panel auth-checking">
 <h2>🔐 Вхід до BUTDETAL</h2>
 <p class="muted">Підключення до спільної бази підприємства. Після входу каталог, фото, креслення та PDF синхронізуються зі спільним архівом. Локальні копії залишаються доступними офлайн.</p>
 <label>Адреса Supabase</label><input id="sbUrl" inputmode="url" placeholder="https://ваш-проєкт.supabase.co">
@@ -66,7 +66,6 @@ footer{text-align:center;color:#8390a0;font-size:12px;padding:24px}
 <div class="row"><div><label>Email для входу</label><input id="authEmail" type="email" autocomplete="username" placeholder="name@example.com"></div><div><label>Пароль</label><input id="authPassword" type="password" autocomplete="current-password" placeholder="Пароль"></div></div>
 <label>Ваше ім’я для журналу змін (для працівників)</label><input id="authDisplayName" maxlength="80" placeholder="Наприклад: Іван"><label class="remember-label"><input id="rememberUser" type="checkbox"> Запам’ятовувати користувача</label>
 <label class="remember-label"><input id="rememberServer" type="checkbox" checked> Запам’ятовувати сервер на цьому телефоні</label>
-<label class="remember-label"><input id="rememberPassword" type="checkbox"> Безпечно запам’ятати пароль на цьому телефоні</label>
 <button id="signInButdetalButton" type="button" class="btn">Увійти</button>
 <div id="authStatus" class="auth-status" role="status"></div>
 </section>
@@ -262,7 +261,7 @@ if(!confirm('УВАГА! Очистити '+label+'? Цю дію не можна
 try{
 if(kind==='series'){
 if(!seriesNative()||typeof AndroidStorage.clearSeriesCatalog!=='function'){alert('Функція очищення каталогу серій недоступна.');return;}
-const session=currentButdetalSession(),cfg=getSbConfig();
+const session=await ensureFreshButdetalSession(),cfg=getSbConfig();
 if(!session||!cfg.url||!cfg.key)throw Error('Спочатку увійди до BUTDETAL і перевір налаштування сервера.');
 const prefix='shared/series/folders/',listUrl=cfg.url.replace(/\/+$/,'')+'/storage/v1/object/list/butdetal-archive';
 const headers={apikey:cfg.key,Authorization:'Bearer '+session.access_token,'Content-Type':'application/json'};
@@ -286,7 +285,7 @@ if(typeof AndroidStorage.setKnownSeriesSyncFolders==='function'){
 }
 loadSeriesCatalog();showSeriesStatus('Каталог серій очищено на телефоні й сервері ('+remote.length+' серверних об’єктів).',true);
 }else{
-const session=currentButdetalSession(),cfg=getSbConfig();
+const session=await ensureFreshButdetalSession(),cfg=getSbConfig();
 if(!session||!cfg.url||!cfg.key||!session.access_token)throw Error('Спочатку увійди до BUTDETAL і перевір налаштування сервера.');
 // Delete only product records in the shared table; series storage is independent.
 await sbRequest('/rest/v1/shared_records?record_type=eq.product',{method:'DELETE',headers:{Prefer:'return=minimal'}});
@@ -313,7 +312,7 @@ function storageSafeFolderKey(name){
  return value||'series-folder';
 }
 async function storageDeleteObject(path){
- const cfg=getSbConfig(),s=currentButdetalSession(),url=cfg.url+'/storage/v1/object/butdetal-archive/'+path.split('/').map(encodeURIComponent).join('/');
+ const cfg=getSbConfig(),s=await ensureFreshButdetalSession(),url=cfg.url+'/storage/v1/object/butdetal-archive/'+path.split('/').map(encodeURIComponent).join('/');
  const r=await fetch(url,{method:'DELETE',headers:{apikey:cfg.key,Authorization:'Bearer '+s.access_token}});
  if(!r.ok&&r.status!==404)throw Error('Помилка видалення Storage HTTP '+r.status);
 }
@@ -329,7 +328,7 @@ function seriesBlobToBase64(blobBytes){
  return btoa(raw);
 }
 async function syncSeriesCatalog(){
- const session=currentButdetalSession();
+ const session=await ensureFreshButdetalSession();
  if(!session){showSeriesStatus('Спочатку увійди до BUTDETAL.',false);return}
  const bridge=['listSeriesSyncFolders','createSeriesSyncZip','readSeriesSyncZipChunkBase64','beginSeriesSyncReceive','appendSeriesSyncReceiveChunk','finishSeriesSyncReceive','deleteSeriesSyncTempFile','getKnownSeriesSyncFolders','setKnownSeriesSyncFolders','deleteSeriesSyncFolder'];
  if(!seriesNative()||bridge.some(k=>typeof AndroidStorage[k]!=='function')){showSeriesStatus('Синхронізація папок серій доступна після оновлення Android-застосунку.',false);return}
@@ -685,7 +684,7 @@ function renderLinkedImages(a){if(!a.length)return '<p class="muted">Файлі�
 function deleteLinkedImage(folder,fileName){if(!folder||!fileName){archiveStatus('Не вдалося визначити файл для видалення.',true);return}if(!confirm('Видалити це фото або креслення?'))return;if(nativeArchive()){let r=AndroidStorage.deleteImage(folder,fileName);if(r!=='OK'){archiveStatus('Не вдалося видалити файл.',true);return}}else{let a=loadArchive(folder).filter(x=>x.fileName!==fileName);localStorage.setItem('bua_'+folder,JSON.stringify(a))}viewProductCard(currentProductId)}
 function deleteProductCard(id){if(!confirm('Видалити картку виробу? Фото та креслення залишаться у своїх папках.'))return;saveProductRecords(productRecords().filter(x=>x.id!==id));deleteCloudProduct(id).catch(e=>console.warn('Cloud delete:',e));renderProductCatalog();showPage('home')}
 
-try{const cfg=getSbConfig();if(cfg.url)document.getElementById('sbUrl').value=cfg.url;if(cfg.key)document.getElementById('sbKey').value=cfg.key;const saved=JSON.parse(localStorage.getItem('butdetal_remember_user_v1')||'null');if(saved){document.getElementById('authEmail').value=saved.email||'';document.getElementById('authDisplayName').value=saved.displayName||'';document.getElementById('rememberUser').checked=true}if(window.AndroidStorage&&AndroidStorage.getCredential){const c=JSON.parse(AndroidStorage.getCredential()||'null');if(c){document.getElementById('authEmail').value=c.email||document.getElementById('authEmail').value;document.getElementById('authPassword').value=c.password||'';document.getElementById('rememberPassword').checked=true}}}catch(e){console.warn('Saved settings:',e)}
+try{const cfg=getSbConfig();if(cfg.url)document.getElementById('sbUrl').value=cfg.url;if(cfg.key)document.getElementById('sbKey').value=cfg.key;const saved=JSON.parse(localStorage.getItem('butdetal_remember_user_v1')||'null');if(saved){document.getElementById('authEmail').value=saved.email||'';document.getElementById('authDisplayName').value=saved.displayName||'';document.getElementById('rememberUser').checked=true}}catch(e){console.warn('Saved settings:',e)}
 renderArchive();renderProductCatalog();renderExcelReferenceData();setTimeout(()=>checkAppUpdate(),1200);
 async function checkAppUpdate(){
  const box=document.getElementById('updateStatus');
@@ -724,30 +723,65 @@ const BUTDETAL_DEFAULT_SUPABASE={url:'https://vtspbiitahswhpzcsjke.supabase.co',
 function getSbConfig(){try{const saved=JSON.parse(localStorage.getItem(BUTDETAL_CFG)||'{}');return {url:String(saved.url||'').trim().replace(/\/$/,'')||BUTDETAL_DEFAULT_SUPABASE.url,key:String(saved.key||'').trim()||BUTDETAL_DEFAULT_SUPABASE.key}}catch(e){return {...BUTDETAL_DEFAULT_SUPABASE}}}
 function authMsg(t,isError=false){const e=document.getElementById('authStatus');if(e){e.textContent=t;e.style.color=isError?'#a3322d':'var(--muted)'}}
 function saveSupabaseConfig(){const url=document.getElementById('sbUrl').value.trim().replace(/\/$/,''),key=document.getElementById('sbKey').value.trim();if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url)||!key){authMsg('Перевір адресу проєкту та публічний ключ.',true);return}if(document.getElementById('rememberServer').checked)localStorage.setItem(BUTDETAL_CFG,JSON.stringify({url,key}));else localStorage.removeItem(BUTDETAL_CFG);authMsg(document.getElementById('rememberServer').checked?'Сервер збережено на цьому телефоні.':'Сервер не буде збережено після закриття застосунку.')}
-async function signInButdetal(){const cfg=getSbConfig(),email=document.getElementById('authEmail').value.trim(),password=document.getElementById('authPassword').value,displayName=document.getElementById('authDisplayName').value.trim();if(!cfg.url||!cfg.key){authMsg('Спочатку введи адресу Supabase і публічний ключ та збережи їх.',true);return}if(!email||!password){authMsg('Введи email і пароль.',true);return}authMsg('Перевіряю облікові дані…');try{const r=await fetch(cfg.url+'/auth/v1/token?grant_type=password',{method:'POST',headers:{'Content-Type':'application/json','apikey':cfg.key},body:JSON.stringify({email,password})});const d=await r.json();if(!r.ok)throw Error(d.msg||d.message||d.error_description||'Невірний email або пароль.');const p=await fetch(cfg.url+'/rest/v1/profiles?select=role,display_name&user_id=eq.'+encodeURIComponent(d.user.id),{headers:{'apikey':cfg.key,'Authorization':'Bearer '+d.access_token}});const rows=await p.json();if(!p.ok||!rows.length)throw Error('Не вдалося прочитати роль користувача. Перевір SQL-міграцію та RLS.');const profile=rows[0];if(profile.role==='colleague'&&!displayName)throw Error('Працівнику потрібно вказати своє ім’я для журналу змін.');if(document.getElementById('rememberUser').checked)localStorage.setItem('butdetal_remember_user_v1',JSON.stringify({email,displayName}));else localStorage.removeItem('butdetal_remember_user_v1');if(document.getElementById('rememberPassword').checked){if(!window.AndroidStorage||!AndroidStorage.saveCredential)throw Error('Безпечне сховище доступне лише в Android-застосунку.');const saved=AndroidStorage.saveCredential(email,password);if(saved!=='OK')throw Error(saved||'Не вдалося зберегти пароль.')}else if(window.AndroidStorage&&AndroidStorage.clearCredential)AndroidStorage.clearCredential();localStorage.setItem('butdetal_session_v1',JSON.stringify({access_token:d.access_token,refresh_token:d.refresh_token,expires_at:Date.now()+(d.expires_in||3600)*1000,user_id:d.user.id,email:d.user.email,role:profile.role,display_name:profile.role==='admin'?(profile.display_name||'Адміністратор'):displayName}));document.getElementById('authGate').classList.add('hidden');document.getElementById('appMain').classList.remove('hidden');authMsg('');const h=document.querySelector('header p');if(h)h.textContent=(profile.role==='admin'?'Адміністратор':'Працівник')+' • '+(profile.role==='admin'?(profile.display_name||'Адміністратор'):displayName);let out=document.getElementById('signOutButton');if(!out){out=document.createElement('button');out.id='signOutButton';out.className='btn secondary';out.textContent='Вийти';out.onclick=signOutButdetal;document.querySelector('header').appendChild(out)}renderArchive();renderProductCatalog();syncButdetalRecords().catch(e=>authMsg('Вхід успішний, але синхронізація поки недоступна: '+e.message,true))}catch(e){authMsg(e.message||'Помилка входу.',true)}}
-
-
-// Persist the login only when the user explicitly enables the secure remember option.
-function persistRememberedCredential(){
- const remember=document.getElementById('rememberPassword');
- if(!remember||!window.AndroidStorage)return;
- if(!remember.checked){
-  if(AndroidStorage.clearCredential)AndroidStorage.clearCredential();
-  return;
- }
- const email=document.getElementById('authEmail').value.trim();
- const password=document.getElementById('authPassword').value;
- if(email&&password&&AndroidStorage.saveCredential){
-  const result=AndroidStorage.saveCredential(email,password);
-  if(result!=='OK')authMsg(result||'Не вдалося зберегти пароль у захищеному сховищі.',true);
- }
-}
-document.getElementById('rememberPassword').addEventListener('change',persistRememberedCredential);
-document.getElementById('authEmail').addEventListener('input',()=>{if(document.getElementById('rememberPassword').checked)persistRememberedCredential()});
-document.getElementById('authPassword').addEventListener('input',()=>{if(document.getElementById('rememberPassword').checked)persistRememberedCredential()});
-// Синхронізація каталогу та спільного архіву файлів Supabase Storage.
 function currentButdetalSession(){try{return JSON.parse(localStorage.getItem('butdetal_session_v1')||'null')}catch(e){return null}}
-async function sbRequest(path,options={}){const cfg=getSbConfig(),session=currentButdetalSession();if(!cfg.url||!cfg.key||!session?.access_token)throw Error('Немає активного входу або налаштувань сервера.');const headers={apikey:cfg.key,Authorization:'Bearer '+session.access_token,'Content-Type':'application/json',...(options.headers||{})};const r=await fetch(cfg.url+path,{...options,headers});if(!r.ok){let t='HTTP '+r.status;try{const j=await r.json();t=j.message||j.details||j.hint||t}catch(e){}throw Error(t)}if(r.status===204)return null;const txt=await r.text();return txt?JSON.parse(txt):null}
+function setButdetalWorkspace(session,doSync=true){
+ document.getElementById('authGate').classList.add('hidden');document.getElementById('appMain').classList.remove('hidden');
+ const h=document.querySelector('header p');if(h)h.textContent=(session.role==='admin'?'Адміністратор':'Працівник')+' • '+(session.display_name||(session.role==='admin'?'Адміністратор':''));
+ let out=document.getElementById('signOutButton');if(!out){out=document.createElement('button');out.id='signOutButton';out.className='btn secondary';out.textContent='Вийти';out.onclick=signOutButdetal;document.querySelector('header').appendChild(out)}
+ renderArchive();renderProductCatalog();if(doSync)syncButdetalRecords().catch(e=>{const s=document.getElementById('syncStatus');if(s)s.textContent='Локальні дані доступні; синхронізація недоступна: '+e.message});
+}
+async function refreshButdetalSession(){
+ const session=currentButdetalSession(),cfg=getSbConfig();if(!session||!session.refresh_token)throw Error('Немає токена оновлення сесії.');
+ const response=await fetch(cfg.url+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{'Content-Type':'application/json','apikey':cfg.key},body:JSON.stringify({refresh_token:session.refresh_token})});
+ let data={};try{data=await response.json()}catch(e){}if(!response.ok)throw Object.assign(Error(data.msg||data.message||data.error_description||'Не вдалося оновити сесію.'),{status:response.status});
+ const profileResponse=await fetch(cfg.url+'/rest/v1/profiles?select=role,display_name&user_id=eq.'+encodeURIComponent(data.user.id),{headers:{'apikey':cfg.key,'Authorization':'Bearer '+data.access_token}});
+ const rows=await profileResponse.json();if(!profileResponse.ok||!rows.length)throw Object.assign(Error('Не вдалося перевірити профіль користувача.'),{status:profileResponse.status});
+ const profile=rows[0],next={...session,access_token:data.access_token,refresh_token:data.refresh_token||session.refresh_token,expires_at:Date.now()+(data.expires_in||3600)*1000,user_id:data.user.id,email:data.user.email,role:profile.role,display_name:profile.role==='admin'?(profile.display_name||'Адміністратор'):(session.display_name||'')};
+ localStorage.setItem('butdetal_session_v1',JSON.stringify(next));return next;
+}
+let butdetalRefreshPromise=null;
+async function ensureFreshButdetalSession(){
+ const session=currentButdetalSession();if(!session)throw Error('Спочатку увійди до BUTDETAL.');
+ if(Number(session.expires_at||0)>Date.now()+120000)return session;
+ if(!butdetalRefreshPromise)butdetalRefreshPromise=refreshButdetalSession().finally(()=>{butdetalRefreshPromise=null});
+ return butdetalRefreshPromise;
+}
+async function signInButdetal(){
+ const cfg=getSbConfig(),email=document.getElementById('authEmail').value.trim(),password=document.getElementById('authPassword').value,displayName=document.getElementById('authDisplayName').value.trim();
+ if(!cfg.url||!cfg.key){authMsg('Спочатку введи адресу Supabase і публічний ключ та збережи їх.',true);return}if(!email||!password){authMsg('Введи email і пароль.',true);return}
+ authMsg('Перевіряю облікові дані…');
+ try{
+  const r=await fetch(cfg.url+'/auth/v1/token?grant_type=password',{method:'POST',headers:{'Content-Type':'application/json','apikey':cfg.key},body:JSON.stringify({email,password})});
+  const d=await r.json();if(!r.ok)throw Error(d.msg||d.message||d.error_description||'Невірний email або пароль.');
+  const p=await fetch(cfg.url+'/rest/v1/profiles?select=role,display_name&user_id=eq.'+encodeURIComponent(d.user.id),{headers:{'apikey':cfg.key,'Authorization':'Bearer '+d.access_token}});
+  const rows=await p.json();if(!p.ok||!rows.length)throw Error('Не вдалося прочитати роль користувача. Перевір SQL-міграцію та RLS.');
+  const profile=rows[0];if(profile.role==='colleague'&&!displayName)throw Error('Працівнику потрібно вказати своє ім’я для журналу змін.');
+  if(document.getElementById('rememberUser').checked)localStorage.setItem('butdetal_remember_user_v1',JSON.stringify({email,displayName}));else localStorage.removeItem('butdetal_remember_user_v1');
+  if(window.AndroidStorage&&AndroidStorage.clearCredential)AndroidStorage.clearCredential();
+  const session={access_token:d.access_token,refresh_token:d.refresh_token,expires_at:Date.now()+(d.expires_in||3600)*1000,user_id:d.user.id,email:d.user.email,role:profile.role,display_name:profile.role==='admin'?(profile.display_name||'Адміністратор'):displayName};
+  localStorage.setItem('butdetal_session_v1',JSON.stringify(session));document.getElementById('authPassword').value='';authMsg('');setButdetalWorkspace(session,true);
+ }catch(e){authMsg(e.message||'Помилка входу.',true)}
+}
+async function restoreButdetalSession(){
+ const gate=document.getElementById('authGate');
+ try{
+  if(window.AndroidStorage&&AndroidStorage.clearCredential)AndroidStorage.clearCredential();
+  const saved=currentButdetalSession();if(!saved){gate.classList.remove('auth-checking');return}
+  if(Number(saved.expires_at||0)>Date.now()+120000){
+   setButdetalWorkspace(saved,false);
+   if(Number(saved.expires_at||0)<Date.now()+10*60*1000)ensureFreshButdetalSession().then(setButdetalWorkspace).catch(e=>console.warn('Session refresh:',e));
+  }else{
+   try{const fresh=await refreshButdetalSession();setButdetalWorkspace(fresh,true)}
+   catch(e){if(e.status===400||e.status===401||e.status===403){localStorage.removeItem('butdetal_session_v1');authMsg('Сесія завершилася. Увійди ще раз.',true)}
+    else{setButdetalWorkspace(saved,false);authMsg('Сервер поки недоступний. Відкрито локальні дані; сесію буде оновлено після підключення.',true)}}
+  }
+ }catch(e){console.warn('Session restore:',e);authMsg('Не вдалося відновити сесію. Увійди ще раз.',true)}
+ finally{gate.classList.remove('auth-checking')}
+}
+
+// Синхронізація каталогу та спільного архіву файлів Supabase Storage.
+
+async function sbRequest(path,options={}){const cfg=getSbConfig(),session=await ensureFreshButdetalSession();if(!cfg.url||!cfg.key||!session?.access_token)throw Error('Немає активного входу або налаштувань сервера.');const headers={apikey:cfg.key,Authorization:'Bearer '+session.access_token,'Content-Type':'application/json',...(options.headers||{})};const r=await fetch(cfg.url+path,{...options,headers});if(!r.ok){let t='HTTP '+r.status;try{const j=await r.json();t=j.message||j.details||j.hint||t}catch(e){}throw Error(t)}if(r.status===204)return null;const txt=await r.text();return txt?JSON.parse(txt):null}
 async function syncButdetalRecords(){
  const session=currentButdetalSession();if(!session)return;
  const status=document.getElementById('syncStatus');
@@ -796,8 +830,8 @@ async function syncButdetalRecords(){
 function localArchiveItems(folder){if(nativeArchive())return JSON.parse(AndroidStorage.listImages(folder)||'[]');return loadArchive(folder)}
 function localPdfItems(){if(window.AndroidStorage&&AndroidStorage.listPdfs)return JSON.parse(AndroidStorage.listPdfs()||'[]');try{return JSON.parse(localStorage.getItem('bua_pdf')||'[]')}catch(e){return []}}
 function storageSafeObjectName(name){const bytes=new TextEncoder().encode(String(name||''));let out='';for(const b of bytes)out+=b.toString(16).padStart(2,'0');return out||'file'}
-async function storageUpload(path,blob,mime){const cfg=getSbConfig(),s=currentButdetalSession(),url=cfg.url+'/storage/v1/object/butdetal-archive/'+path.split('/').map(encodeURIComponent).join('/');const r=await fetch(url,{method:'POST',headers:{apikey:cfg.key,Authorization:'Bearer '+s.access_token,'Content-Type':mime,'x-upsert':'true'},body:blob});if(!r.ok){let j={};try{j=await r.json()}catch(e){}throw Error(j.message||j.error||'Storage upload HTTP '+r.status)}}
-async function storageDownload(path){const cfg=getSbConfig(),s=currentButdetalSession(),url=cfg.url+'/storage/v1/object/butdetal-archive/'+path.split('/').map(encodeURIComponent).join('/');const r=await fetch(url,{headers:{apikey:cfg.key,Authorization:'Bearer '+s.access_token}});if(!r.ok)throw Error('Не вдалося завантажити файл з архіву (HTTP '+r.status+').');return await r.blob()}
+async function storageUpload(path,blob,mime){const cfg=getSbConfig(),s=await ensureFreshButdetalSession(),url=cfg.url+'/storage/v1/object/butdetal-archive/'+path.split('/').map(encodeURIComponent).join('/');const r=await fetch(url,{method:'POST',headers:{apikey:cfg.key,Authorization:'Bearer '+s.access_token,'Content-Type':mime,'x-upsert':'true'},body:blob});if(!r.ok){let j={};try{j=await r.json()}catch(e){}throw Error(j.message||j.error||'Storage upload HTTP '+r.status)}}
+async function storageDownload(path){const cfg=getSbConfig(),s=await ensureFreshButdetalSession(),url=cfg.url+'/storage/v1/object/butdetal-archive/'+path.split('/').map(encodeURIComponent).join('/');const r=await fetch(url,{headers:{apikey:cfg.key,Authorization:'Bearer '+s.access_token}});if(!r.ok)throw Error('Не вдалося завантажити файл з архіву (HTTP '+r.status+').');return await r.blob()}
 function dataUrlBlob(dataUrl){const a=dataUrl.split(',');const mime=(a[0].match(/:(.*?);/)||[])[1]||'application/octet-stream';const raw=atob(a[1]||'');const bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);return new Blob([bytes],{type:mime})}
 function blobDataUrl(blob){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(Error('Не вдалося прочитати файл'));r.readAsDataURL(blob)})}
 async function saveCloudMeta(m){await sbRequest('/rest/v1/archive_files?on_conflict=object_path',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(m)})}
@@ -807,8 +841,9 @@ const remote=await sbRequest('/rest/v1/archive_files?select=id,owner_id,folder,o
 
 async function deleteCloudProduct(id){const s=currentButdetalSession();if(!s)return;await sbRequest('/rest/v1/shared_records?id=eq.'+encodeURIComponent(id)+'&record_type=eq.product',{method:'DELETE',headers:{Prefer:'return=minimal'}})}
 
-function signOutButdetal(){localStorage.removeItem('butdetal_session_v1');document.getElementById('appMain').classList.add('hidden');document.getElementById('authGate').classList.remove('hidden');const b=document.getElementById('signOutButton');if(b)b.remove()}
-(function initButdetalAuth(){const c=getSbConfig();if(c.url)document.getElementById('sbUrl').value=c.url;if(c.key)document.getElementById('sbKey').value=c.key;try{const u=JSON.parse(localStorage.getItem('butdetal_remember_user_v1')||'null');if(u){document.getElementById('authEmail').value=u.email||'';document.getElementById('authDisplayName').value=u.displayName||'';document.getElementById('rememberUser').checked=true}}catch(e){}})();
+async function signOutButdetal(){const session=currentButdetalSession(),cfg=getSbConfig();try{if(session?.access_token)await fetch(cfg.url+'/auth/v1/logout?scope=local',{method:'POST',headers:{apikey:cfg.key,Authorization:'Bearer '+session.access_token}})}catch(e){console.warn('Server logout:',e)}finally{localStorage.removeItem('butdetal_session_v1');if(window.AndroidStorage&&AndroidStorage.clearCredential)AndroidStorage.clearCredential();document.getElementById('appMain').classList.add('hidden');document.getElementById('authGate').classList.remove('hidden');const b=document.getElementById('signOutButton');if(b)b.remove();authMsg('Вихід виконано. Для наступного входу введи email і пароль.')}}
+(function initButdetalAuth(){const c=getSbConfig();if(c.url)document.getElementById('sbUrl').value=c.url;if(c.key)document.getElementById('sbKey').value=c.key;try{const u=JSON.parse(localStorage.getItem('butdetal_remember_user_v1')||'null');if(u){document.getElementById('authEmail').value=u.email||'';document.getElementById('authDisplayName').value=u.displayName||'';document.getElementById('rememberUser').checked=true}}catch(e){}restoreButdetalSession()})();
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&currentButdetalSession())ensureFreshButdetalSession().catch(e=>console.warn('Session refresh:',e))});
 
 /* Excel import/export: SheetJS is bundled locally, so workbook handling works offline. */
 let butdetalExcelPending=null;
