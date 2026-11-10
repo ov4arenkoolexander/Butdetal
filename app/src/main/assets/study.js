@@ -56,10 +56,54 @@ facts.forEach((f,fi)=>f.prompts.forEach((prompt,pi)=>{
  questions.push({id:fi*4+pi+1,topic:f.topic,q:prompt,answer:f.fact,options:shuffle(opts),why:f.why});
 }));
 const topicNames={slabs:'Пустотні плити',quality:'Якість і контроль',machine:'Машина CGM TC2',safety:'Охорона праці',storage:'Складування та перевезення'};
+
+const lessonData={
+slabs:{title:'Пустотні плити',intro:'Ознайомлення з основними вимогами навчальної технологічної карти до виробництва пустотних плит.',sections:[
+['Документи та креслення',['Виробництво плит виконують за зазначеним у карті стандартом ДСТУ Б В.2.6-53:2008 та затвердженими робочими кресленнями.','Робоче креслення визначає геометрію, армування, закладні елементи та інші параметри конкретного виробу.']],
+['Арматура',['Для напруженої стрижневої арматури в карті наведені класи А600, А800 та А1000.','Для ненапруженої стрижневої арматури вказані А400С та А500С.']],
+['Відпускна міцність',['У теплий період для попередньо напружених плит відпускна міцність пов’язана з передавальною міцністю.','Для плит із ненапруженою арматурою в теплий період зазначено 70% міцності на стиск, що відповідає класу бетону.','Для окремих холодних умов або погодженого залізничного перевезення карта допускає підвищення до 85%.']]
+]},
+quality:{title:'Якість і контроль',intro:'Основні контрольні параметри, наведені в навчальній карті. Фактичне приймання виконується за чинними документами та кресленнями.',sections:[
+['Категорії поверхні',['КП2 стосується нижньої (стельової) поверхні плити.','КП3 стосується верхньої та бічних поверхонь, які не обробляються і невидимі під час експлуатації.']],
+['Тріщини та арматура',['Для верхньої поверхні в карті наведена гранична ширина технологічних тріщин 0,3 мм.','Для бічних і нижньої поверхонь наведено 0,2 мм.','Оголення арматури загалом не допускається, крім спеціально описаних у карті випадків.','Окремі допустимі кінці напруженої арматури не повинні виступати за торець більш ніж на 10 мм; зазначені в карті кінці захищають цементно-піщаним розчином або бітумним лаком.']],
+['Приймання партії',['Контролюють міцність бетону, арматуру та закладні вироби, зварні з’єднання, геометрію, захисний шар, тріщини й категорію поверхні.','Навантажувальні випробування проводять у випадках, передбачених картою, зокрема перед масовим виробництвом, після змін і в серійному виробництві не рідше одного разу на рік.']]
+]},
+machine:{title:'Машина CGM TC2',intro:'Навчальні відомості про обладнання та контроль технологічного процесу.',sections:[
+['Режим вібрування',['У матеріалах карти для віброформувальної машини CGM TC2 наведено час вібрування 5–10 хвилин.','Режим обладнання потрібно звіряти з чинною технологічною картою та вказівками відповідального працівника.']],
+['Контроль процесу',['Не змінюй параметри обладнання самостійно. Відхилення, несправності або незвичну роботу потрібно повідомити відповідальному працівнику.']]
+]},
+safety:{title:'Охорона праці',intro:'Ключові принципи безпечної роботи. Цей розділ не замінює інструктажу та офіційних інструкцій підприємства.',sections:[
+['Перед роботою',['Виконуй лише доручені роботи після відповідного інструктажу.','Застосовуй передбачені засоби індивідуального захисту та дотримуйся затвердженої технологічної карти.']],
+['Обладнання та інструмент',['Перед обслуговуванням обладнання його потрібно зупинити, від’єднати від живлення та дочекатися повної зупинки рухомих частин.','Короткі стрижні менш ніж 30 см не можна перерізати вручну без спеціального пристосування.','Якщо умови небезпечні або незрозумілі, зупини роботу та звернися до керівника робіт.']]
+]},
+storage:{title:'Складування та перевезення',intro:'Вимоги до розташування та збереження готових залізобетонних виробів із навчальної карти.',sections:[
+['Пустотні плити',['Плити під час зберігання й транспортування укладають горизонтально.','Висота штабеля пустотних плит не повинна перевищувати 2,5 м.','Підкладки та прокладки між плитами розташовують у місцях монтажних петель.']],
+['Інші вироби',['Сходові марші зберігають горизонтально, сходинками догори; висота штабеля — до 2,5 м.','Перемички зберігають горизонтально; висота штабеля — не більше 2 м.','Фундаментні блоки сортують за марками та партіями; висота штабеля — до 2,5 м.','Колодязні кільця зберігають і перевозять у робочому положенні, у два ряди за висотою.','Дрібноштучні залізобетонні вироби складають і перевозять на палетах або ув’язаними пакувальною стрічкою.']]
+]}
+};
+
 let active=[],at=0,answers=[],selected=-1,quizTopic='all';
 const $=id=>document.getElementById(id);
 function esc(v){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+window.switchStudyMode=function(mode){
+ const materials=$('studyMaterials'),cards=$('studyCards'),mTab=$('studyMaterialsTab'),tTab=$('studyTestsTab');
+ if(!materials||!cards)return;
+ const showMaterials=mode!=='tests';
+ materials.classList.toggle('hidden',!showMaterials);cards.classList.toggle('hidden',showMaterials);
+ if(mTab)mTab.classList.toggle('active',showMaterials);if(tTab)tTab.classList.toggle('active',!showMaterials);
+ if(showMaterials)renderStudyMaterials();
+};
+window.openStudyLesson=function(topic){
+ const lesson=lessonData[topic];if(!lesson)return;
+ const target=$('studyMaterials');if(!target)return;
+ target.innerHTML='<div class="lesson-card"><button type="button" class="btn secondary" onclick="renderStudyMaterials()">← До тем</button><h3>'+esc(lesson.title)+'</h3><p>'+esc(lesson.intro)+'</p>'+lesson.sections.map(section=>'<div class="lesson-detail"><h3>'+esc(section[0])+'</h3><ul>'+section[1].map(line=>'<li>'+esc(line)+'</li>').join('')+'</ul></div>').join('')+'<button type="button" class="btn" onclick="switchStudyMode(\'tests\');startStudyQuiz(\''+topic+'\')">Перевірити знання — тест</button></div>';
+};
+function renderStudyMaterials(){
+ const target=$('studyMaterials');if(!target)return;
+ target.innerHTML=Object.keys(lessonData).map(topic=>{const lesson=lessonData[topic];return '<div class="lesson-card"><h3>'+esc(lesson.title)+'</h3><p>'+esc(lesson.intro)+'</p><button type="button" class="btn secondary" onclick="openStudyLesson(\''+topic+'\')">Відкрити матеріал</button></div>'}).join('');
+}
 window.startStudyQuiz=function(topic='all'){
  quizTopic=topic;const pool=questions.filter(q=>topic==='all'||q.topic===topic);active=shuffle(pool.slice()).slice(0,Math.min(20,pool.length));at=0;answers=[];selected=-1;
  $('studyIntro').classList.add('hidden');$('studyResult').classList.add('hidden');$('studyQuiz').classList.remove('hidden');renderQuestion();
@@ -92,10 +136,11 @@ async function finishQuiz(){
 }
 window.studyBackToCards=function(){$('studyResult').classList.add('hidden');$('studyIntro').classList.remove('hidden');};
 window.renderStudyCards=function(){
+ window.switchStudyMode('tests');
  const topics=Object.keys(topicNames);
  $('studyCards').innerHTML=topics.map(t=>"<div class=\"card\"><h3>"+esc(topicNames[t])+"</h3><p class=\"muted\">"+questions.filter(q=>q.topic===t).length+" питань у банку</p><button class=\"btn\" onclick=\"startStudyQuiz('"+t+"')\">Почати тест</button></div>").join('')+
  "<div class=\"card\"><h3>Змішаний тест</h3><p class=\"muted\">"+questions.length+" питань у спільному банку. У тесті — до 20 випадкових питань без повторів.</p><button class=\"btn\" onclick=\"startStudyQuiz('all')\">Почати змішаний тест</button></div>";
 };
-document.addEventListener('DOMContentLoaded',()=>{if($('studyCards'))renderStudyCards();});
+document.addEventListener('DOMContentLoaded',()=>{if($('studyCards')){renderStudyCards();window.switchStudyMode('materials');}});
 window.addEventListener('load',()=>{if($('studyCards'))renderStudyCards();});
 })();
