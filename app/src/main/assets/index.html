@@ -493,7 +493,7 @@ function calculateFormula(){
  case 'trapezoidArea': result=(val('a')+val('b'))/2*val('c')/1e6;unit='м²';break;
  case 'perimeter': result=2*(val('a')+val('b'))/1000;unit='м';break;
  case 'steelMass': if(val('a')<=0||val('b')<0)return formulaError('Перевір діаметр і довжину.');result=(val('a')**2/162)*val('b');unit='кг';break;
- case 'barsCount': if(val('a')<=0||val('b')<=0)return formulaError('Довжина та крок мають бути більшими за нуль.');result=Math.floor(val('a')/val('b'])+1;unit='шт.';break;
+ case 'barsCount': if(val('a')<=0||val('b')<=0)return formulaError('Довжина та крок мають бути більшими за нуль.');result=Math.floor(val('a')/val('b'))+1;unit='шт.';break;
  default:return formulaError('Невідома формула.');
  }
  const inputs=[...document.querySelectorAll('#formulaInputs input')].map(x=>Number(x.value));
