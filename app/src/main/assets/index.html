@@ -670,7 +670,7 @@ function saveProductGeometryDimensions(){
 }
 
 function viewProductCard(id){
- let x=productRecords().find(v=>v.id===id);if(!x)return;
+ let x=productRecords().find(v=>String(v.id)===String(id));if(!x){console.warn('BUTDETAL: product card not found',id);return;}
  currentProductId=id;
  const title=productDisplayValue(x.mark)||productDisplayValue(x.name)||'Виріб';
  document.getElementById('detailTitle').textContent=title;
