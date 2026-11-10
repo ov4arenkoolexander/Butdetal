@@ -480,7 +480,7 @@ function calculateFormula(){
  if(!Number.isInteger(count)||count<1){document.getElementById('formulaResult').textContent='Кількість має бути цілим числом від 1.';return}
  let result=0,unit='',detail='';
  switch(type){
- case 'rectVolume': result=val('a')*val('b')*val('c')/1e9;unit='м³';detail='Об’єм одного виробу: '+fmt(result/count)+' м³';break;
+ case 'rectVolume': result=val('a')*val('b')*val('c')/1e9;unit='м³';detail='Об’єм одного виробу: '+fmt(result)+' м³';break;
  case 'cylinderVolume': result=Math.PI*Math.pow(val('b')/2,2)*val('a')/1e9;unit='м³';detail='Об’єм одного виробу: '+fmt(result/count)+' м³';break;
  case 'hollowCylinder': if(val('c')>=val('b'))return formulaError('Внутрішній діаметр має бути меншим за зовнішній.');result=Math.PI*(val('b')**2-val('c')**2)/4*val('a')/1e9;unit='м³';detail='Об’єм одного виробу: '+fmt(result/count)+' м³';break;
  case 'trianglePrism': result=(val('a')*val('b')/2)*val('c')/1e9;unit='м³';detail='Об’єм одного виробу: '+fmt(result/count)+' м³';break;
@@ -500,8 +500,7 @@ function calculateFormula(){
  if(inputs.some(x=>!Number.isFinite(x))||!Number.isFinite(result))return formulaError('Введи коректні числові значення.');
  if(type!=='composite'&&inputs.some(x=>x<=0))return formulaError('Розміри мають бути більшими за нуль.');
  if(type==='composite'&&result<0)return formulaError('Сума об’ємів не може бути від’ємною.');
- if(type!=='steelMass'&&type!=='barsCount'&&type!=='perimeter'&&type!=='rectArea'&&type!=='triangleArea'&&type!=='circleArea'&&type!=='trapezoidArea')result*=count;
- else if(type==='steelMass')result*=count;
+ result*=count;
  const suffix=type==='barsCount'?'':(' • '+count+' шт.');
  document.getElementById('formulaResult').textContent='Результат: '+fmt(result,type==='barsCount'?0:3)+' '+unit+suffix+(detail?'\n'+detail:'');
 }
