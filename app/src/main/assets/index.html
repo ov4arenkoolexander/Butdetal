@@ -35,7 +35,7 @@ footer{text-align:center;color:#8390a0;font-size:12px;padding:24px}
 .study-cards{display:grid;grid-template-columns:1fr;gap:8px}.study-cards .card{margin:0}.study-progress{display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:13px;color:#ffd34b;margin-bottom:14px}.study-question{font-size:20px;line-height:1.4;margin:10px 0 16px}.study-options{display:grid;gap:9px}.study-option{width:100%;text-align:left;background:#202d3d;border:1px solid #405168;color:#f3f5f8;border-radius:12px;padding:13px;font-size:15px;line-height:1.4}.study-option:disabled{opacity:1}.study-option.correct{background:#1d4934;border-color:#42a66b}.study-option.incorrect{background:#542b31;border-color:#c4515c}.study-feedback{color:#d5e0ea;font-size:14px;line-height:1.5;margin:12px 0}.study-option:focus{outline:2px solid #ffc400;outline-offset:2px}.study-mode-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}.study-mode-tabs button{border:1px solid #405168;border-radius:11px;background:#202d3d;color:#dfe7f0;padding:11px;font-weight:700}.study-mode-tabs button.active{background:linear-gradient(135deg,#ffcf16,#e9a400);color:#151a20;border-color:#ffd34b}.lesson-card{background:#1b2838;border:1px solid #3b4c61;border-radius:14px;padding:14px;margin:10px 0}.lesson-card h3{margin:0 0 8px;color:#ffd34b}.lesson-card p,.lesson-card li{font-size:14px;line-height:1.55;color:#dce4ed}.lesson-card ul{padding-left:20px}.lesson-detail{border-top:1px solid #3b4c61;margin-top:12px;padding-top:12px}.journal-filter-row{display:grid;grid-template-columns:1fr 1.5fr;gap:8px}.journal-entry{border:1px solid #39495d;border-radius:13px;background:#1b2736;padding:13px;margin:10px 0}.journal-entry-head{display:flex;gap:8px;align-items:flex-start;justify-content:space-between}.journal-entry h3{margin:0 0 5px;font-size:15px}.journal-entry time{font-size:11px;color:#a7b1bf}.journal-entry .journal-meta{font-size:12px;color:#c3cedb;margin:7px 0}.journal-entry details{margin-top:9px;border-top:1px solid #354255;padding-top:8px}.journal-entry pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;color:#d7e0eb;background:#101925;padding:10px;border-radius:8px}.journal-badge{font-size:11px;font-weight:800;border:1px solid #4a5b70;border-radius:8px;padding:4px 7px;color:#dce5ef;white-space:nowrap}.journal-empty{padding:16px;text-align:center;color:#a7b1bf}</style>
 </head>
 <body>
-<header><small>ОФЛАЙН-ДОВІДНИК • ВЕРСІЯ 2.0.48 • CLOUD SYNC + OFFLINE</small><h1><svg viewBox="0 0 64 64" width="46" height="46" style="vertical-align:middle;margin-right:8px" aria-label="BUTDETAL"><path fill="#ffc400" d="M7 9h50v3H7zM16 12v29h3V12zm31 0v29h3V12zM17 18h33v2H17z"/><path fill="none" stroke="#ffc400" stroke-width="2.5" d="M32 12v39m-5 0h10M32 12l10 0 5 5M32 12l-10 0-5 5"/><path fill="#d5dee8" d="M6 43l16-5v11L6 54zm19-6l16-5v11l-16 5zm19-6l14-4v11l-14 4z"/><path fill="#ffc400" d="M6 56l53-15v4L6 60z"/></svg>BUTDETAL</h1><p>Довідник для будівельника • Формули, бетон, арматура</p><button class="btn" style="background:#c9e7a3;color:#173f35" onclick="checkAppUpdate()">Перевірити оновлення</button><p id="updateStatus" class="muted" style="color:#e3eee8" aria-live="polite">Перевірка оновлень — вручну</p></header>
+<header><small>ОФЛАЙН-ДОВІДНИК • ВЕРСІЯ 2.0.50 • CLOUD SYNC + OFFLINE</small><h1><svg viewBox="0 0 64 64" width="46" height="46" style="vertical-align:middle;margin-right:8px" aria-label="BUTDETAL"><path fill="#ffc400" d="M7 9h50v3H7zM16 12v29h3V12zm31 0v29h3V12zM17 18h33v2H17z"/><path fill="none" stroke="#ffc400" stroke-width="2.5" d="M32 12v39m-5 0h10M32 12l10 0 5 5M32 12l-10 0-5 5"/><path fill="#d5dee8" d="M6 43l16-5v11L6 54zm19-6l16-5v11l-16 5zm19-6l14-4v11l-14 4z"/><path fill="#ffc400" d="M6 56l53-15v4L6 60z"/></svg>BUTDETAL</h1><p>Довідник для будівельника • Формули, бетон, арматура</p><button class="btn" style="background:#c9e7a3;color:#173f35" onclick="checkAppUpdate()">Перевірити оновлення</button><p id="updateStatus" class="muted" style="color:#e3eee8" aria-live="polite">Перевірка оновлень — вручну</p></header>
 
 <section id="authGate" class="auth-panel">
 <h2>🔐 Вхід до BUTDETAL</h2>
@@ -57,7 +57,6 @@ footer{text-align:center;color:#8390a0;font-size:12px;padding:24px}
 <button class="tab active" onclick="showTab('home',this)">Головна</button>
 <button class="tab" onclick="showTab('catalog',this);renderProductCatalog()">Каталог</button>
 <button class="tab" onclick="showTab('series',this);loadSeriesCatalog()">Каталог серій</button>
-<button class="tab" onclick="showTab('concrete',this)">Об’єм бетону</button>
 <button class="tab" onclick="showTab('formulas',this)">Формули</button>
 <button class="tab" onclick="showTab('archive',this)">Фото й креслення</button>
 <button class="tab" onclick="showTab('learning',this);renderStudyCards();switchStudyMode('materials')">Навчання</button>
@@ -69,7 +68,7 @@ footer{text-align:center;color:#8390a0;font-size:12px;padding:24px}
 <div class="home-shortcuts"><div class="card"><h2>📊 Excel — імпорт та експорт</h2><p class="muted">Працює офлайн. Книга Excel містить чотири аркуші: Каталог, Нормативи, Формули та Таблиці.</p><p class="muted">Обери, які розділи включити у файл для друку або передачі.</p>
 <div class="excel-select"><label><input type="checkbox" class="excel-sheet-choice" value="Каталог" checked> Каталог виробів</label><label><input type="checkbox" class="excel-sheet-choice" value="Нормативи" checked> Нормативи</label><label><input type="checkbox" class="excel-sheet-choice" value="Формули" checked> Формули</label><label><input type="checkbox" class="excel-sheet-choice" value="Таблиці" checked> Таблиці</label></div>
 <button class="btn secondary" onclick="exportSelectedExcel()">⬇ Експортувати вибране в Excel</button><div id="excelExportStatus" class="muted" aria-live="polite"></div><label>Імпорт книги Excel (.xlsx)</label><input id="excelFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"><button class="btn" onclick="previewButdetalExcel()">Перевірити файл та показати попередній перегляд</button><div id="excelPreview" class="muted" aria-live="polite"></div><div id="excelActions" class="hidden"><button class="btn" onclick="applyButdetalExcel(true)">Оновити дублікати та додати нові</button><button class="btn secondary" onclick="applyButdetalExcel(false)">Пропустити дублікати, додати лише нові</button></div><button class="btn secondary" onclick="downloadExcelTemplate()">Завантажити порожній шаблон Excel</button></div>
-<button class="shortcut" onclick="navTo('concrete')"><span class="shortcut-icon">▰</span><b>Бетон</b><small>Об’єм конструкцій</small></button>
+<button class="shortcut" onclick="navTo('formulas')"><span class="shortcut-icon">▰</span><b>Бетон</b><small>Об’єм конструкцій</small></button>
 <button class="shortcut" onclick="navTo('archive')"><span class="shortcut-icon">▧</span><b>Архів</b><small>Фото й креслення</small></button>
 </div>
 
@@ -100,13 +99,6 @@ footer{text-align:center;color:#8390a0;font-size:12px;padding:24px}
 <label>Креслення та схеми армування (можна кілька)</label><input id="productDrawings" type="file" accept="image/*" multiple>
 <button class="btn" onclick="saveProductCard()">Зберегти картку</button><button class="btn secondary" onclick="showTab('home',document.querySelector('.tab'))">Скасувати</button><div id="productEditorStatus" class="muted" aria-live="polite"></div></div></section>
 <section id="productDetails" class="page hidden"><div class="card"><h2 id="detailTitle">Виріб</h2><div id="detailBody"></div><button class="btn" onclick="editProductCard(currentProductId)">Редагувати картку</button><button class="btn danger" onclick="deleteProductCard(currentProductId)">Видалити картку</button><button class="btn secondary" onclick="showTab('home',document.querySelector('.tab'))">← На головну</button></div></section>
-<section id="concrete" class="page hidden">
-<div class="card"><h2>Калькулятор об’єму бетону</h2><label>Тип конструкції</label><select id="ctype" onchange="changeConcrete()"><option value="box">Плита / прямокутний блок</option><option value="strip">Стрічковий фундамент</option><option value="column">Колона прямокутна</option><option value="cylinder">Кругла колона / паля</option><option value="wall">Стіна</option></select>
-<div class="row"><div><label id="l1">Довжина, мм</label><input id="a" type="number" min="0" step="1" value="6000"></div><div><label id="l2">Ширина, мм</label><input id="b" type="number" min="0" step="1" value="4000"></div></div>
-<div class="row"><div><label id="l3">Товщина, мм</label><input id="c" type="number" min="0" step="1" value="150"></div><div><label>Кількість однакових елементів, шт.</label><input id="n" type="number" min="1" step="1" value="1"></div></div>
-<button class="btn" onclick="calcConcrete()">Розрахувати об’єм</button><div id="conResult" class="result">Об’єм: —</div><p class="muted">Для стрічки: довжина × ширина стрічки × висота. Для круглої колони: π × (діаметр/2)² × висота. Результат не враховує втрати та нерівності.</p></div>
-<div class="card"><h2>Орієнтовна кількість суміші</h2><p>Замовний об’єм зазвичай уточнюють з урахуванням геометрії, опалубки, основи та технологічних втрат. Не додавай довільний великий запас без перевірки.</p></div>
-</section>
 <section id="steel" class="page hidden">
 <div class="card"><h2>Калькулятор маси арматури</h2><label>Діаметр стрижня, мм</label><select id="dia"><option>6</option><option>8</option><option>10</option><option>12</option><option>14</option><option>16</option><option>18</option><option>20</option><option>22</option><option>25</option><option>28</option><option>32</option><option>36</option><option>40</option></select>
 <div class="row"><div><label>Загальна довжина, мм</label><input id="length" type="number" min="0" step="1" value="100000"></div><div><label>Кількість, шт. (необов’язково)</label><input id="count" type="number" min="1" step="1" value="1"></div></div>
@@ -120,15 +112,50 @@ footer{text-align:center;color:#8390a0;font-size:12px;padding:24px}
 <div class="card"><h2>Геометричні формули</h2><table><tbody><tr><td>Прямокутний блок</td><td>V = a × b × h</td></tr><tr><td>Кругла колона</td><td>V = π × r² × h</td></tr><tr><td>Площа прямокутника</td><td>S = a × b</td></tr><tr><td>Площа круга</td><td>S = π × r²</td></tr></tbody></table></div>
 <div class="card"><h2>Імпортовані довідкові таблиці та нормативи</h2><div id="excelTablesView" class="muted"></div><div id="excelNormsView" class="muted"></div></div></section>
 <section id="formulas" class="page hidden">
-<div class="card"><h2>Основні формули</h2>
-<div class="item"><b>Об’єм прямокутної конструкції</b><p>V = довжина × ширина × висота</p><span class="muted">Усі розміри вводь у метрах; результат — м³.</span></div>
-<div class="item"><b>Об’єм стрічкового фундаменту</b><p>V = сумарна довжина стрічок × ширина × висота</p><span class="muted">Перетини стрічок не рахуй двічі — інакше буде завищення.</span></div>
-<div class="item"><b>Маса арматури</b><p>m ≈ (d² / 162) × L</p><span class="muted">d — діаметр у мм, L — загальна довжина в метрах, m — кг.</span></div>
-<div class="item"><b>Кількість стрижнів у ряду</b><p>Орієнтовно: N = floor(корисна довжина / крок) + 1</p><span class="muted">Фактичну кількість уточнюй з урахуванням захисного шару та проєктних вимог.</span></div>
-<div class="item"><b>Площа круга</b><p>S = π × r², де π ≈ 3,1416</p></div></div>
-<div class="card"><h2>Безпека та точність</h2><div class="warning">Цей застосунок не виконує конструктивний розрахунок несучої здатності. Для фундаментів, перекриттів, балок, колон і стін потрібні дані про навантаження, ґрунт, клас бетону й сталі, умови експлуатації та перевірка кваліфікованим фахівцем.</div></div>
-<div class="card"><h2>Формули з Excel</h2><div id="excelFormulasView" class="muted"></div></div></section>
+<div class="card"><div class="section-heading"><div><span class="eyebrow">РОЗРАХУНКОВІ ІНСТРУМЕНТИ</span><h2>Калькулятор будівельних формул</h2></div><span class="section-symbol">∑</span></div>
+<p class="muted">Обери формулу, введи розміри та кількість. Розміри геометрії вводяться в міліметрах. Результати — у відповідних одиницях.</p>
+<label>Що потрібно розрахувати</label>
+<select id="formulaType" onchange="renderFormulaInputs()">
+<option value="rectVolume">Об’єм прямокутного виробу / плити / балки</option>
+<option value="cylinderVolume">Об’єм циліндра / круглої колони</option>
+<option value="hollowCylinder">Об’єм кільцевого виробу / труби</option>
+<option value="trianglePrism">Об’єм трикутної призми</option>
+<option value="trapezoidPrism">Об’єм трапецієподібної призми</option>
+<option value="trapezoidBlock">Об’єм клина / трапецієподібного блока</option>
+<option value="composite">Складений виріб: сума та віднімання частин</option>
+<option value="rectArea">Площа прямокутника</option>
+<option value="triangleArea">Площа трикутника</option>
+<option value="circleArea">Площа круга</option>
+<option value="trapezoidArea">Площа трапеції</option>
+<option value="perimeter">Периметр прямокутника</option>
+<option value="steelMass">Маса арматури</option>
+<option value="barsCount">Кількість стрижнів за кроком</option>
+</select>
+<div id="formulaInputs" class="row"></div>
+<div class="row"><div><label>Кількість однакових виробів, шт.</label><input id="formulaCount" type="number" min="1" step="1" value="1"></div></div>
+<button class="btn" type="button" onclick="calculateFormula()">Розрахувати</button>
+<div id="formulaResult" class="result" aria-live="polite">Результат: —</div>
+<p class="muted">Для складеної геометрії вкажи об’єми окремих частин у літрах: додатні значення додаються, від’ємні — віднімаються. Перевіряй одиниці та не віднімай порожнини, яких немає у виробі.</p>
+</div>
 
+<div class="card"><h2>Калькулятор об’єму бетону</h2><label>Тип конструкції</label><select id="ctype" onchange="changeConcrete()"><option value="box">Плита / прямокутний блок</option><option value="strip">Стрічковий фундамент</option><option value="column">Колона прямокутна</option><option value="cylinder">Кругла колона / паля</option><option value="wall">Стіна</option></select>
+<div class="row"><div><label id="l1">Довжина, мм</label><input id="a" type="number" min="0" step="1" value="6000"></div><div><label id="l2">Ширина, мм</label><input id="b" type="number" min="0" step="1" value="4000"></div></div>
+<div class="row"><div><label id="l3">Товщина, мм</label><input id="c" type="number" min="0" step="1" value="150"></div><div><label>Кількість однакових елементів, шт.</label><input id="n" type="number" min="1" step="1" value="1"></div></div>
+<button class="btn" onclick="calcConcrete()">Розрахувати об’єм</button><div id="conResult" class="result">Об’єм: —</div><p class="muted">Для стрічки: довжина × ширина стрічки × висота. Для круглої колони: π × (діаметр/2)² × висота. Результат не враховує втрати та нерівності.</p></div>
+<div class="card"><h2>Орієнтовна кількість суміші</h2><p>Замовний об’єм зазвичай уточнюють з урахуванням геометрії, опалубки, основи та технологічних втрат. Не додавай довільний великий запас без перевірки.</p></div>
+
+
+<div class="card"><h2>Довідкові формули</h2>
+<div class="item"><b>Об’єм прямокутного виробу</b><p>V = a × b × h</p><span class="muted">Плити, балки, блоки, прямокутні колони.</span></div>
+<div class="item"><b>Об’єм циліндра</b><p>V = π × r² × L</p><span class="muted">Круглі колони, палі, циліндричні елементи.</span></div>
+<div class="item"><b>Об’єм порожнистого циліндра</b><p>V = π × (R² − r²) × L</p><span class="muted">Труби та кільцеві вироби; R — зовнішній, r — внутрішній радіус.</span></div>
+<div class="item"><b>Трикутна призма</b><p>V = (a × h / 2) × L</p><span class="muted">Трикутна площа перерізу, помножена на довжину.</span></div>
+<div class="item"><b>Трапецієподібна призма</b><p>V = ((a + b) / 2 × h) × L</p><span class="muted">Трапецієподібний переріз уздовж довжини.</span></div>
+<div class="item"><b>Маса арматури</b><p>m ≈ (d² / 162) × L</p><span class="muted">d — діаметр у мм, L — загальна довжина в метрах.</span></div>
+<div class="item"><b>Кількість стрижнів</b><p>N = floor(корисна довжина / крок) + 1</p><span class="muted">Орієнтовно; захисний шар і проєктні вимоги враховуються окремо.</span></div>
+</div>
+<div class="card"><h2>Безпека та точність</h2><div class="warning">Калькулятор виконує геометричні та довідкові обчислення. Він не визначає несучу здатність, армування чи безпечні розміри конструкції. Для робочого проєкту потрібні перевірка креслень, навантажень, матеріалів і розрахунок відповідальним фахівцем.</div></div>
+<div class="card"><h2>Формули з Excel</h2><div id="excelFormulasView" class="muted"></div></div></section>
 <section id="archive" class="page hidden"><div class="card"><h2>Фотоархів підприємства</h2><p class="muted">Два окремі каталоги на телефоні. Працює без інтернету.</p><div class="folder-grid"><button class="folder-tile" onclick="setArchiveFolder('drawings')"><span>📁 ПАПКА 1</span><b>📐 Креслення</b><span id="drawingCount">0 файлів</span></button><button class="folder-tile" onclick="setArchiveFolder('products')"><span>📁 ПАПКА 2</span><b>🏗️ Фото виробів</b><span id="productCount">0 файлів</span></button></div><label for="archiveFolder">Папка для збереження</label><select id="archiveFolder" onchange="renderArchive()"><option value="drawings">Креслення</option><option value="products">Фото виробів</option></select><label for="archiveTitle">Назва / маркування</label><input id="archiveTitle" maxlength="100" placeholder="Наприклад: ПК 60-12-8 або креслення КЖ-01"><label for="archiveNotes">Примітки (необов’язково)</label><input id="archiveNotes" maxlength="300" placeholder="Розміри, бетон, арматура, номер замовлення"><label for="archiveFile">Вибрати фото з телефону</label><input id="archiveFile" type="file" accept="image/*"><button class="btn" onclick="saveArchivePhoto()">Зберегти в обрану папку</button><div id="archiveStatus" class="result hidden" aria-live="polite"></div><hr><h3>Резервна копія BUTDETAL</h3><p class="muted">Копія містить креслення, фото виробів, PDF та робочі дані. Пароль і активний сеанс не експортуються.</p><div class="button-row"><button class="btn secondary" onclick="createButdetalBackup()">Створити резервну копію</button><button class="btn secondary" onclick="restoreButdetalBackup()">Відновити з копії</button></div><div id="backupStatus" class="result hidden" aria-live="polite"></div></div><div class="card"><h2 id="archiveHeading">📐 Креслення</h2><p class="muted">Перегляд збережених фото та видалення непотрібних файлів.</p><div id="archiveGallery" class="photo-grid"></div></div></section>
 <section id="series" class="page hidden">
 <div class="card">
@@ -425,10 +452,64 @@ function navTo(id){const btn=[...document.querySelectorAll('.tab')].find(x=>x.ge
 function showTab(id,btn){document.querySelectorAll('.page').forEach(x=>x.classList.add('hidden'));document.getElementById(id).classList.remove('hidden');document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));btn.classList.add('active');window.scrollTo(0,0)}
 function changeConcrete(){let t=document.getElementById('ctype').value;let labels={box:['Довжина, мм','Ширина, мм','Товщина / висота, мм'],strip:['Сумарна довжина, мм','Ширина стрічки, мм','Висота стрічки, мм'],column:['Висота, мм','Ширина, мм','Глибина, мм'],cylinder:['Висота, мм','Діаметр, мм','Не використовується'],wall:['Довжина, мм','Висота, мм','Товщина, мм']}[t];['l1','l2','l3'].forEach((id,i)=>document.getElementById(id).textContent=labels[i]);document.getElementById('b').disabled=(t==='cylinder');document.getElementById('c').disabled=(t==='cylinder');if(t==='cylinder'){document.getElementById('a').value='1000';document.getElementById('b').value='400';document.getElementById('c').value='0'}else{document.getElementById('a').value='6000';document.getElementById('b').value='300';document.getElementById('c').value='500'}}
 function calcConcrete(){let t=document.getElementById('ctype').value,a=+document.getElementById('a').value/1000,b=+document.getElementById('b').value/1000,c=+document.getElementById('c').value/1000,n=Math.max(1,Math.floor(+document.getElementById('n').value||1));if([a,b,c].some(v=>!Number.isFinite(v)||v<0)||a<=0||((t!=='cylinder')&&(b<=0||c<=0))){document.getElementById('conResult').textContent='Перевір введені розміри в мм.';return}let v=t==='cylinder'?Math.PI*Math.pow(b/2,2)*a:a*b*c;v*=n;document.getElementById('conResult').textContent='Об’єм: '+v.toLocaleString('uk-UA',{maximumFractionDigits:3})+' м³ ('+n+' шт.)'}
+function renderFormulaInputs(){
+ const type=document.getElementById('formulaType').value,el=document.getElementById('formulaInputs');
+ const defs={
+ rectVolume:[['a','Довжина, мм',6000],['b','Ширина, мм',1200],['c','Висота / товщина, мм',220]],
+ cylinderVolume:[['a','Довжина / висота, мм',1000],['b','Діаметр, мм',400]],
+ hollowCylinder:[['a','Довжина, мм',1000],['b','Зовнішній діаметр, мм',400],['c','Внутрішній діаметр, мм',200]],
+ trianglePrism:[['a','Основа трикутника, мм',500],['b','Висота трикутника, мм',300],['c','Довжина призми, мм',1000]],
+ trapezoidPrism:[['a','Нижня основа, мм',500],['b','Верхня основа, мм',300],['c','Висота трапеції, мм',250],['d','Довжина призми, мм',1000]],
+ trapezoidBlock:[['a','Довжина, мм',1000],['b','Ширина, мм',500],['c','Висота з одного боку, мм',100],['d','Висота з другого боку, мм',300]],
+ composite:[['a','Частина 1, літрів (+/−)',100],['b','Частина 2, літрів (+/−)',-20],['c','Частина 3, літрів (+/−)',0]],
+ rectArea:[['a','Довжина, мм',1000],['b','Ширина, мм',500]],
+ triangleArea:[['a','Основа, мм',500],['b','Висота, мм',300]],
+ circleArea:[['a','Діаметр, мм',400]],
+ trapezoidArea:[['a','Нижня основа, мм',500],['b','Верхня основа, мм',300],['c','Висота, мм',250]],
+ perimeter:[['a','Довжина, мм',1000],['b','Ширина, мм',500]],
+ steelMass:[['a','Діаметр арматури, мм',12],['b','Загальна довжина, м',12]],
+ barsCount:[['a','Корисна довжина, мм',6000],['b','Крок, мм',200]]
+ };
+ el.innerHTML=(defs[type]||[]).map(([id,label,value])=>'<div style="flex:1;min-width:145px"><label for="fi_'+id+'">'+label+'</label><input id="fi_'+id+'" type="number" step="any" value="'+value+'"></div>').join('');
+ document.getElementById('formulaResult').textContent='Результат: —';
+}
+function calculateFormula(){
+ const type=document.getElementById('formulaType').value,count=Number(document.getElementById('formulaCount').value);
+ const val=id=>Number(document.getElementById('fi_'+id)?.value);
+ const fmt=(v,d=3)=>v.toLocaleString('uk-UA',{maximumFractionDigits:d});
+ if(!Number.isInteger(count)||count<1){document.getElementById('formulaResult').textContent='Кількість має бути цілим числом від 1.';return}
+ let result=0,unit='',detail='';
+ switch(type){
+ case 'rectVolume': result=val('a')*val('b')*val('c')/1e9;unit='м³';detail='Об’єм одного виробу: '+fmt(result/count)+' м³';break;
+ case 'cylinderVolume': result=Math.PI*Math.pow(val('b')/2,2)*val('a')/1e9;unit='м³';detail='Об’єм одного виробу: '+fmt(result/count)+' м³';break;
+ case 'hollowCylinder': if(val('c')>=val('b'))return formulaError('Внутрішній діаметр має бути меншим за зовнішній.');result=Math.PI*(val('b')**2-val('c')**2)/4*val('a')/1e9;unit='м³';detail='Об’єм одного виробу: '+fmt(result/count)+' м³';break;
+ case 'trianglePrism': result=(val('a')*val('b')/2)*val('c')/1e9;unit='м³';detail='Об’єм одного виробу: '+fmt(result/count)+' м³';break;
+ case 'trapezoidPrism': result=((val('a')+val('b'))/2*val('c'))*val('d')/1e9;unit='м³';detail='Об’єм одного виробу: '+fmt(result/count)+' м³';break;
+ case 'trapezoidBlock': result=val('a')*val('b')*((val('c')+val('d'))/2)/1e9;unit='м³';detail='Середня висота × основа';break;
+ case 'composite': result=(val('a')+val('b')+val('c'))/1000;unit='м³';detail='Сума частин у літрах';break;
+ case 'rectArea': result=val('a')*val('b')/1e6;unit='м²';break;
+ case 'triangleArea': result=val('a')*val('b')/2/1e6;unit='м²';break;
+ case 'circleArea': result=Math.PI*(val('a')/2)**2/1e6;unit='м²';break;
+ case 'trapezoidArea': result=(val('a')+val('b'))/2*val('c')/1e6;unit='м²';break;
+ case 'perimeter': result=2*(val('a')+val('b'))/1000;unit='м';break;
+ case 'steelMass': if(val('a')<=0||val('b')<0)return formulaError('Перевір діаметр і довжину.');result=(val('a')**2/162)*val('b');unit='кг';break;
+ case 'barsCount': if(val('a')<=0||val('b')<=0)return formulaError('Довжина та крок мають бути більшими за нуль.');result=Math.floor(val('a')/val('b'])+1;unit='шт.';break;
+ default:return formulaError('Невідома формула.');
+ }
+ const inputs=[...document.querySelectorAll('#formulaInputs input')].map(x=>Number(x.value));
+ if(inputs.some(x=>!Number.isFinite(x))||!Number.isFinite(result))return formulaError('Введи коректні числові значення.');
+ if(type!=='composite'&&inputs.some(x=>x<=0))return formulaError('Розміри мають бути більшими за нуль.');
+ if(type==='composite'&&result<0)return formulaError('Сума об’ємів не може бути від’ємною.');
+ if(type!=='steelMass'&&type!=='barsCount'&&type!=='perimeter'&&type!=='rectArea'&&type!=='triangleArea'&&type!=='circleArea'&&type!=='trapezoidArea')result*=count;
+ else if(type==='steelMass')result*=count;
+ const suffix=type==='barsCount'?'':(' • '+count+' шт.');
+ document.getElementById('formulaResult').textContent='Результат: '+fmt(result,type==='barsCount'?0:3)+' '+unit+suffix+(detail?'\n'+detail:'');
+}
+function formulaError(message){document.getElementById('formulaResult').textContent=message}
 function calcSteel(){let d=+document.getElementById('dia').value,L=+document.getElementById('length').value/1000,n=Math.max(1,Math.floor(+document.getElementById('count').value||1));if(!Number.isFinite(L)||L<0){document.getElementById('steelResult').textContent='Довжина має бути невід’ємною.';return}let unit=d*d/162,m=unit*L*n;document.getElementById('steelResult').textContent='Маса ≈ '+m.toLocaleString('uk-UA',{maximumFractionDigits:2})+' кг • '+unit.toLocaleString('uk-UA',{maximumFractionDigits:3})+' кг/м'}
 function doSearch(){let q=document.getElementById('search').value.toLowerCase().trim();if(!q){if(document.getElementById('productSearch')){document.getElementById('productSearch').value='';renderProductCatalog()}return}if(typeof productRecords==='function'&&productRecords().some(x=>productSearchMatches(x,q))){document.getElementById('productSearch').value=q;showPage('home');renderProductCatalog();return}let pages=[...document.querySelectorAll('.page')];let best=pages.find(p=>p.innerText.toLowerCase().includes(q));if(best){pages.forEach(p=>p.classList.add('hidden'));best.classList.remove('hidden');document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.getAttribute('onclick').includes("'"+best.id+"'")))}}
 let ds=[6,8,10,12,14,16,18,20,22,25,28,32,36,40];document.getElementById('steelTable').innerHTML=ds.map(d=>{let m=d*d/162;return `<tr><td>${d}</td><td>${m.toFixed(3)}</td><td>${(m*6).toFixed(2)}</td><td>${(m*12).toFixed(2)}</td></tr>`}).join('');
-calcConcrete();calcSteel();
+calcConcrete();calcSteel();renderFormulaInputs();
 
 function backupStatus(message,error=false){const e=document.getElementById('backupStatus');if(!e)return;e.textContent=message;e.classList.remove('hidden');e.style.background=error?'#fff0ef':'#edf5e7'}
 function createButdetalBackup(){if(!window.AndroidStorage||!AndroidStorage.beginBackup||!AndroidStorage.appendBackupChunk||!AndroidStorage.finishBackup){backupStatus('Резервне копіювання доступне в оновленій Android-версії.',true);return}try{const data={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(!k||k==='butdetal_session_v1'||k==='butdetal_remember_user_v1'||/password|credential|access_token|refresh_token/i.test(k))continue;data[k]=localStorage.getItem(k)}const raw=JSON.stringify(data);let r=AndroidStorage.beginBackup();if(r!=='OK')throw Error(r||'Не вдалося почати копіювання');for(let i=0,n=0;i<raw.length;i+=48000,n++){r=AndroidStorage.appendBackupChunk(n,raw.slice(i,i+48000));if(r!=='OK')throw Error(r||'Не вдалося передати дані копії')}r=AndroidStorage.finishBackup();if(r!=='BACKUP_EXPORT_STARTED')throw Error(r||'Не вдалося відкрити збереження');backupStatus('Вибери місце збереження ZIP-файлу.')}catch(e){backupStatus('Помилка підготовки копії: '+e.message,true)}}
