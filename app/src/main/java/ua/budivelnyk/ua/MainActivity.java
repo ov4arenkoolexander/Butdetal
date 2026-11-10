@@ -854,6 +854,25 @@ public class MainActivity extends Activity {
                 return "ЗАВАНТАЖЕННЯ_ПОЧАТО";
             } catch(Exception e) { return "Помилка оновлення: "+e.getMessage(); }
         }
+        @JavascriptInterface public void printCurrentPage() {
+            runOnUiThread(() -> {
+                try {
+                    if (webView == null) throw new IllegalStateException("WebView недоступний");
+                    PrintManager manager = (PrintManager)getSystemService(PRINT_SERVICE);
+                    if (manager == null) throw new IllegalStateException("Служба друку недоступна");
+                    PrintAttributes attributes = new PrintAttributes.Builder()
+                        .setMediaSize(PrintAttributes.MediaSize.ISO_A4)
+                        .setResolution(new PrintAttributes.Resolution("butdetal_print", "BUTDETAL", 300, 300))
+                        .setMinMargins(PrintAttributes.Margins.NO_MARGINS)
+                        .build();
+                    PrintDocumentAdapter adapter = webView.createPrintDocumentAdapter("BUTDETAL-План-на-зміну");
+                    manager.print("BUTDETAL — План на зміну", adapter, attributes);
+                } catch (Exception e) {
+                    if (webView != null) webView.evaluateJavascript(
+                        "window.onShiftPlanPrintError && window.onShiftPlanPrintError(" + JSONObject.quote(e.getMessage() == null ? "Помилка друку" : e.getMessage()) + ")", null);
+                }
+            });
+        }
     }
 
     @Override public void onCreate(Bundle b) {
