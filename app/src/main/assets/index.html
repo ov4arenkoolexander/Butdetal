@@ -630,7 +630,7 @@ function productDetailRow(label,value,suffix=''){
  return '<div class="product-detail-row"><span>'+safeText(label)+'</span><b>'+safeText(v+suffix)+'</b></div>';
 }
 function parseProductGeometryDimensions(value){
- const m=String(value||'').match(/(\\d+(?:[.,]\\d+)?)\\s*[×xх*]\\s*(\\d+(?:[.,]\\d+)?)\\s*[×xх*]\\s*(\\d+(?:[.,]\\d+)?)/i);
+ const m=String(value||'').match(/(\d+(?:[.,]\d+)?)\s*[×xх*]\s*(\d+(?:[.,]\d+)?)\s*[×xх*]\s*(\d+(?:[.,]\d+)?)/i);
  if(!m)return {length:'',width:'',height:''};
  return {length:m[1].replace(',','.'),width:m[2].replace(',','.'),height:m[3].replace(',','.')};
 }
