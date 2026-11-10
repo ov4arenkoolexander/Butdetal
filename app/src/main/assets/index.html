@@ -678,6 +678,7 @@ function viewProductCard(id){
  if(photos.length)html+='<h3>📷 Фото виробу ('+photos.length+')</h3>'+renderLinkedImages(photos);
  if(drawings.length)html+='<h3>📐 Креслення та армування ('+drawings.length+')</h3>'+renderLinkedImages(drawings);
  document.getElementById('detailBody').innerHTML=html;
+ productGeometryVolume();
  showPage('productDetails');
 }
 function renderLinkedImages(a){if(!a.length)return '<p class="muted">Файлів поки немає.</p>';return '<div class="photo-grid">'+a.map(x=>`<div class="photo-card"><img src="${x.dataUrl||''}" alt="${safeText(x.title)}"><div class="muted">${safeText(x.date||'')}</div><button class="btn danger" onclick="deleteLinkedImage('${safeText(x.folder||'')}', '${safeText(x.fileName||'')}')">Видалити фото</button></div>`).join('')+'</div>'}
