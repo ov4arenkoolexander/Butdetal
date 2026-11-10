@@ -9,7 +9,7 @@ html_files = list((ROOT / 'app/src/main/assets').glob('*.html'))
 html = '\n'.join(p.read_text(encoding='utf-8') for p in html_files)
 
 methods = set(re.findall(r'@JavascriptInterface\s+public\s+[\w<>\[\]]+\s+(\w+)\s*\(', java))
-required = {'saveCredential','getCredential','clearCredential','saveDocument','saveImage','listImages','deleteImage','savePdf','listPdfs','readPdfBase64','importPdf','deletePdf','openPdf','recognizeImage','recognizePdf','beginBackup','appendBackupChunk','finishBackup','importBackup'}
+required = {'clearCredential','saveDocument','saveImage','listImages','deleteImage','savePdf','listPdfs','readPdfBase64','importPdf','deletePdf','openPdf','recognizeImage','recognizePdf','beginBackup','appendBackupChunk','finishBackup','importBackup'}
 missing = sorted(required - methods)
 if missing:
     print('ERROR: missing AndroidStorage methods:', ', '.join(missing))
@@ -19,6 +19,15 @@ for method in required:
     if method not in html:
         print(f'ERROR: method not referenced by HTML: {method}')
         sys.exit(1)
+
+index = (ROOT / 'app/src/main/assets/index.html').read_text(encoding='utf-8')
+for auth_method in ('restoreButdetalSession', 'refreshButdetalSession', 'ensureFreshButdetalSession'):
+    if auth_method not in index:
+        print(f'ERROR: persistent auth flow is missing: {auth_method}')
+        sys.exit(1)
+if 'rememberPassword' in index or 'persistRememberedCredential' in index:
+    print('ERROR: password persistence must stay disabled; store only the auth session')
+    sys.exit(1)
 
 for lang in ('ukr', 'rus', 'eng'):
     f = ROOT / 'app/src/main/assets/tessdata' / f'{lang}.traineddata'
