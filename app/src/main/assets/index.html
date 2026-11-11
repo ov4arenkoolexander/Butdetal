@@ -971,7 +971,7 @@ function clearButdetalSession(){
 }
 function setButdetalWorkspace(session,doSync=true){
  document.getElementById('authGate').classList.add('hidden');document.getElementById('appMain').classList.remove('hidden');
- const h=document.querySelector('header p');if(h)h.textContent=(session.role==='admin'?'Адміністратор':'Працівник')+' • '+(session.display_name||(session.role==='admin'?'Адміністратор':''));
+ const h=document.querySelector('header p');if(h)h.textContent=(session.role==='admin'?'Адміністратор':'Працівник')+' • '+(session.display_name||(session.role==='admin'?'Адміністратор':''))+(session.brigadier_name?' · Бригадир: '+session.brigadier_name:'');
  let out=document.getElementById('signOutButton');if(!out){out=document.createElement('button');out.id='signOutButton';out.className='btn secondary';out.textContent='Вийти';out.onclick=signOutButdetal;document.querySelector('header').appendChild(out)}
  renderArchive();renderProductCatalog();if(doSync)syncButdetalRecords().catch(e=>{const s=document.getElementById('syncStatus');if(s)s.textContent='Локальні дані доступні; синхронізація недоступна: '+e.message});
 }
