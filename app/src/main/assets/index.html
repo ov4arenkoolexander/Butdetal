@@ -237,7 +237,7 @@ const shiftPlanNames={span1:'План 1 прольоту',span2:'План 2 пр
 function shiftPlanKey(){return 'bua_shift_plan_'+document.getElementById('shiftPlanType').value}
 function readShiftPlan(){try{return JSON.parse(localStorage.getItem(shiftPlanKey())||'{}')}catch(e){return {}}}
 let shiftPlanSyncTimer=null,shiftPlanCloudReady=false;const shiftPlanLoadedKeys=new Set();
-function saveShiftPlanData(d){localStorage.setItem(shiftPlanKey(),JSON.stringify(d));if(shiftPlanCloudReady){clearTimeout(shiftPlanSyncTimer);shiftPlanSyncTimer=setTimeout(()=>syncShiftPlanNow().catch(e=>{const el=document.getElementById('shiftPlanStatus');if(el)el.textContent='Локально збережено. Помилка хмарної синхронізації: '+(e.message||e)}),900)}}
+function saveShiftPlanData(d){d.updatedAt=new Date().toISOString();localStorage.setItem(shiftPlanKey(),JSON.stringify(d));if(shiftPlanCloudReady){clearTimeout(shiftPlanSyncTimer);shiftPlanSyncTimer=setTimeout(()=>syncShiftPlanNow().catch(e=>{const el=document.getElementById('shiftPlanStatus');if(el)el.textContent='Локально збережено. Помилка хмарної синхронізації: '+(e.message||e)}),900)}}
 
 function shiftPlanIdentity(d){
  const m=d.meta||{},session=currentButdetalSession();
