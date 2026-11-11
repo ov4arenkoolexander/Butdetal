@@ -277,7 +277,7 @@ function printMasterShiftPlans(){
 
 function shiftPlanProductLabel(p){return String(p.mark||p.name||'Виріб').trim()}
 function shiftPlanProductForRow(row,products){return products.find(p=>String(p.id)===String(row.productId))||null}
-function shiftPlanMetaChange(key,value){let d=readShiftPlan();d.meta=d.meta||{};d.meta[key]=value;saveShiftPlanData(d);if(d.meta.date&&d.meta.brigade&&d.meta.shift){shiftPlanCloudReady=true;syncShiftPlanNow().catch(e=>{const st=document.getElementById('shiftPlanStatus');if(st)st.textContent='Збережено локально; синхронізація: '+(e.message||e)})}}
+function shiftPlanMetaChange(key,value){let d=readShiftPlan();d.meta=d.meta||{};d.meta[key]=value;saveShiftPlanData(d);if(d.meta.date&&d.meta.brigade&&d.meta.shift){const k=shiftPlanKey()+'_'+d.meta.date+'_'+d.meta.shift;loadShiftPlanFromCloud().then(()=>{shiftPlanLoadedKeys.add(k);renderShiftPlan();return syncShiftPlanNow()}).catch(e=>{const st=document.getElementById('shiftPlanStatus');if(st)st.textContent='Збережено локально; синхронізація: '+(e.message||e)})}}
 function renderShiftPlan(){
  document.body.classList.remove('shift-print-mode');document.getElementById('shiftPrintSheet')?.remove();
  const _m=readShiftPlan().meta||{},_loadKey=shiftPlanKey()+'_'+(_m.date||'')+'_'+(_m.shift||'');
