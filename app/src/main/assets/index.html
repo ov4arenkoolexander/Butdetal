@@ -347,7 +347,7 @@ function printMasterShiftPlans(){
 function shiftPlanMetaChange(key,value){
  if(!shiftPlanIsAdmin()&&!['date','shift'].includes(key))return;
  let d=readShiftPlan();d.meta=d.meta||{};d.meta[key]=value;d.updatedAt=new Date().toISOString();localStorage.setItem(shiftPlanKey(),JSON.stringify(d));shiftPlanCloudReady=false;
- const m=d.meta;if(m.date&&m.shift){const k=shiftPlanKey()+'_'+m.date+'_'+m.shift;shiftPlanLoadedKeys.delete(k);loadShiftPlanFromCloud().then(()=>{shiftPlanLoadedKeys.add(k);renderShiftPlan()}).catch(e=>{const st=document.getElementById('shiftPlanStatus');if(st)st.textContent=e.message||e})}
+ const m=d.meta;if(m.date&&m.shift&&(key==='date'||key==='shift')){const k=shiftPlanKey()+'_'+m.date+'_'+m.shift;shiftPlanLoadedKeys.delete(k);loadShiftPlanFromCloud().then(()=>{shiftPlanLoadedKeys.add(k);renderShiftPlan()}).catch(e=>{const st=document.getElementById('shiftPlanStatus');if(st)st.textContent=e.message||e})}
 }
 function shiftPlanNormalizeName(v){return String(v||'').toLocaleLowerCase('uk-UA').replace(/[’'ʻ]/g,'').replace(/[×х]/g,'x').replace(/[^\p{L}\p{N}]+/gu,' ').trim().replace(/\s+/g,' ')}
 function shiftPlanSplitPlugSuffix(v){const name=String(v||'').trim(),plug=/\sт-а$/i.test(name);return {name:plug?name.replace(/\sт-а$/i,'').trim():name,plug}}
