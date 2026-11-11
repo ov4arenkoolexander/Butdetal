@@ -236,7 +236,7 @@ footer{text-align:center;color:#8390a0;font-size:12px;padding:24px}
 const shiftPlanNames={span1:'План 1 прольоту',span2:'План 2 прольоту',span3:'План 3 прольоту',repair1:'План Рем зона 1'};
 function shiftPlanKey(){return 'bua_shift_plan_'+document.getElementById('shiftPlanType').value}
 function readShiftPlan(){try{return JSON.parse(localStorage.getItem(shiftPlanKey())||'{}')}catch(e){return {}}}
-let shiftPlanSyncTimer=null,shiftPlanCloudReady=false;
+let shiftPlanSyncTimer=null,shiftPlanCloudReady=false;const shiftPlanLoadedKeys=new Set();
 function saveShiftPlanData(d){localStorage.setItem(shiftPlanKey(),JSON.stringify(d));if(shiftPlanCloudReady){clearTimeout(shiftPlanSyncTimer);shiftPlanSyncTimer=setTimeout(()=>syncShiftPlanNow().catch(e=>{const el=document.getElementById('shiftPlanStatus');if(el)el.textContent='Локально збережено. Помилка хмарної синхронізації: '+(e.message||e)}),900)}}
 
 function shiftPlanIdentity(d){
@@ -252,7 +252,7 @@ async function syncShiftPlanNow(){
  shiftPlanCloudReady=true;
  const el=document.getElementById('shiftPlanStatus');if(el)el.textContent='План синхронізовано із сервером • '+v.brigade_name+' • '+v.plan_date;
 }
-async function loadShiftPlanFromCloud(){
+async async function loadShiftPlanFromCloud(){
  const session=currentButdetalSession();if(!session?.user_id)return;
  const v=shiftPlanIdentity(readShiftPlan());if(!v.plan_date||!v.shift_no)return;
  const rows=await sbRequest('/rest/v1/shift_plans?select=data,updated_at&user_id=eq.'+encodeURIComponent(session.user_id)+'&plan_type=eq.'+encodeURIComponent(v.plan_type)+'&plan_date=eq.'+encodeURIComponent(v.plan_date)+'&shift_no=eq.'+encodeURIComponent(v.shift_no)+'&limit=1');
@@ -277,10 +277,11 @@ function printMasterShiftPlans(){
 
 function shiftPlanProductLabel(p){return String(p.mark||p.name||'Виріб').trim()}
 function shiftPlanProductForRow(row,products){return products.find(p=>String(p.id)===String(row.productId))||null}
-function shiftPlanMetaChange(key,value){let d=readShiftPlan();d.meta=d.meta||{};d.meta[key]=value;saveShiftPlanData(d)}
+function shiftPlanMetaChange(key,value){let d=readShiftPlan();d.meta=d.meta||{};d.meta[key]=value;saveShiftPlanData(d);if(d.meta.date&&d.meta.brigade&&d.meta.shift){shiftPlanCloudReady=true;syncShiftPlanNow().catch(e=>{const st=document.getElementById('shiftPlanStatus');if(st)st.textContent='Збережено локально; синхронізація: '+(e.message||e)})}}
 function renderShiftPlan(){
  document.body.classList.remove('shift-print-mode');document.getElementById('shiftPrintSheet')?.remove();
- loadShiftPlanFromCloud().then(()=>{if(shiftPlanCloudReady)renderShiftPlan();}).catch(()=>{});
+ const _m=readShiftPlan().meta||{},_loadKey=shiftPlanKey()+'_'+(_m.date||'')+'_'+(_m.shift||'');
+ if(_m.date&&_m.shift&&!shiftPlanLoadedKeys.has(_loadKey)){shiftPlanLoadedKeys.add(_loadKey);loadShiftPlanFromCloud().then(()=>renderShiftPlan()).catch(e=>{shiftPlanLoadedKeys.delete(_loadKey);const st=document.getElementById('shiftPlanStatus');if(st)st.textContent='Не вдалося завантажити хмарний план: '+(e.message||e)});}
  let d=readShiftPlan(),a=productRecords(),rows=d.rows||[],manual=d.manualRows||[],el=document.getElementById('shiftPlanEditor');if(!el)return;d.meta=d.meta||{};
  const opts='<option value="">— вибрати виріб —</option>'+a.map(p=>'<option value="'+safeText(p.id)+'">'+safeText(shiftPlanProductLabel(p))+'</option>').join('');
  const total=rows.reduce((sum,r)=>{const p=shiftPlanProductForRow(r,a);return sum+(Number(p?.volume)||0)*(Number(r.qty)||0)},0);
