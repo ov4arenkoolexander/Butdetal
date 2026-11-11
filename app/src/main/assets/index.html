@@ -252,7 +252,7 @@ async function syncShiftPlanNow(){
  shiftPlanCloudReady=true;
  const el=document.getElementById('shiftPlanStatus');if(el)el.textContent='План синхронізовано із сервером • '+v.brigade_name+' • '+v.plan_date;
 }
-async async function loadShiftPlanFromCloud(){
+async function loadShiftPlanFromCloud(){
  const session=currentButdetalSession();if(!session?.user_id)return;
  const v=shiftPlanIdentity(readShiftPlan());if(!v.plan_date||!v.shift_no)return;
  const rows=await sbRequest('/rest/v1/shift_plans?select=data,updated_at&user_id=eq.'+encodeURIComponent(session.user_id)+'&plan_type=eq.'+encodeURIComponent(v.plan_type)+'&plan_date=eq.'+encodeURIComponent(v.plan_date)+'&shift_no=eq.'+encodeURIComponent(v.shift_no)+'&limit=1');
