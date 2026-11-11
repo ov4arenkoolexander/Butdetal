@@ -66,7 +66,7 @@ footer{text-align:center;color:#8390a0;font-size:12px;padding:24px}
 <label>Публічний ключ (sb_publishable_…)</label><input id="sbKey" autocomplete="off" placeholder="sb_publishable_…">
 <button id="saveSupabaseConfigButton" type="button" class="btn secondary">Зберегти налаштування сервера</button>
 <div class="row"><div><label>Email для входу</label><input id="authEmail" type="email" autocomplete="username" placeholder="name@example.com"></div><div><label>Пароль</label><input id="authPassword" type="password" autocomplete="current-password" placeholder="Пароль"></div></div>
-<label>Ваше ім’я для журналу змін (для працівників)</label><input id="authDisplayName" maxlength="80" placeholder="Наприклад: Іван"><label class="remember-label"><input id="rememberUser" type="checkbox"> Запам’ятовувати користувача</label>
+<label>Ваше ім’я для журналу змін (для працівників)</label><input id="authDisplayName" maxlength="80" placeholder="Наприклад: Іван"><label>Бригадир</label><select id="authBrigadierName"><option value="">— Оберіть своє прізвище —</option><option>Баряцький</option><option>Чиж</option><option>Коренєв</option><option>Шерстюк</option></select><label>PIN-код бригадира</label><input id="authBrigadierPin" type="password" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" autocomplete="off" placeholder="4 цифри"><label class="remember-label"><input id="rememberUser" type="checkbox"> Запам’ятовувати користувача</label>
 <label class="remember-label"><input id="rememberServer" type="checkbox" checked> Запам’ятовувати сервер на цьому телефоні</label>
 <button id="signInButdetalButton" type="button" class="btn">Увійти</button>
 <div id="authStatus" class="auth-status" role="status"></div>
@@ -258,9 +258,11 @@ async function syncShiftPlanNow(){
   return;
  }
  const planId=localStorage.getItem(shiftPlanFactKey());if(!planId)throw Error('Спочатку завантаж план адміністратора.');
+ if(!session.brigadier_token||new Date(session.brigadier_expires_at||0).getTime()<=Date.now())throw Error('Сесія бригадира завершилася. Вийди та увійди з PIN повторно.');
  const fact={rows:(d.rows||[]).map((r,i)=>({rowKey:r.rowKey||'',rowIndex:i,productId:r.productId||'',factQty:Number(r.factQty)||0})),updatedAt:new Date().toISOString()};
- await sbRequest('/rest/v1/shift_plan_facts?on_conflict=plan_id,user_id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({plan_id:planId,user_id:session.user_id,fact_data:fact,updated_at:fact.updatedAt})});
- const el=document.getElementById('shiftPlanStatus');if(el)el.textContent='Факт виконання збережено на сервері.';
+ const cfg=getSbConfig(),response=await fetch(cfg.url+'/functions/v1/butdetal-brigadier-access',{method:'POST',headers:{'Content-Type':'application/json','apikey':cfg.key,'Authorization':'Bearer '+session.access_token},body:JSON.stringify({action:'save_fact',brigadier_token:session.brigadier_token,plan_id:planId,fact_data:fact})});
+ const result=await response.json();if(!response.ok)throw Error(result.error||'Не вдалося зберегти факт.');
+ const el=document.getElementById('shiftPlanStatus');if(el)el.textContent='Факт бригадира '+session.brigadier_name+' збережено на сервері.';
 }
 function shiftPlanFactRowForItem(factRows,row,index){return factRows.find(x=>row.rowKey&&String(x.rowKey||'')===String(row.rowKey))||factRows.find(x=>x.rowIndex!==undefined&&Number(x.rowIndex)===index)||factRows.find(x=>row.productId&&String(x.productId||'')===String(row.productId))||null}
 async function loadShiftPlanFromCloud(){
@@ -271,38 +273,33 @@ async function loadShiftPlanFromCloud(){
   const q='/rest/v1/shift_plans?select=id,data,updated_at&plan_type=eq.'+encodeURIComponent(v.plan_type)+'&plan_date=eq.'+encodeURIComponent(v.plan_date)+'&shift_no=eq.'+encodeURIComponent(v.shift_no)+'&brigade_name=eq.'+encodeURIComponent(v.brigade_name)+'&limit=1';
   const rows=await sbRequest(q);plan=rows?.[0];
  }else{
-  const assignments=await sbRequest('/rest/v1/brigade_assignments?select=brigade_name&user_id=eq.'+encodeURIComponent(session.user_id)+'&limit=1');
-  const brigade=assignments?.[0]?.brigade_name;if(!brigade)throw Error('Адміністратор ще не призначив тобі бригаду.');
-  const m=readShiftPlan().meta||{};m.brigade=brigade;
-  const rows=await sbRequest('/rest/v1/shift_plans?select=id,data,updated_at,foreman_name&plan_type=eq.'+encodeURIComponent(v.plan_type)+'&plan_date=eq.'+encodeURIComponent(v.plan_date)+'&shift_no=eq.'+encodeURIComponent(v.shift_no)+'&brigade_name=eq.'+encodeURIComponent(brigade)+'&limit=1');
-  plan=rows?.[0];
+  if(!session.brigadier_token||new Date(session.brigadier_expires_at||0).getTime()<=Date.now())throw Error('Сесія бригадира завершилася. Вийди та увійди з PIN повторно.');
+  const cfg=getSbConfig(),response=await fetch(cfg.url+'/functions/v1/butdetal-brigadier-access',{method:'POST',headers:{'Content-Type':'application/json','apikey':cfg.key,'Authorization':'Bearer '+session.access_token},body:JSON.stringify({action:'get_plan',brigadier_token:session.brigadier_token,plan_type:v.plan_type,plan_date:v.plan_date,shift_no:v.shift_no})});
+  const result=await response.json();if(!response.ok)throw Error(result.error||'Не вдалося завантажити план бригадира.');
+  plan=result.plan;
+  if(!plan){
+   localStorage.removeItem(shiftPlanFactKey());
+   const old=readShiftPlan(),empty={meta:{...(old.meta||{}),brigade:'',foreman:session.brigadier_name},rows:[],manualRows:[],updatedAt:new Date().toISOString()};
+   localStorage.setItem(shiftPlanKey(),JSON.stringify(empty));shiftPlanCloudReady=true;
+   const st=document.getElementById('shiftPlanStatus');if(st)st.textContent='Для бригадира '+session.brigadier_name+' на цю дату та зміну план не призначено.';
+   return;
+  }
+  const factRows=result.fact?.fact_data?.rows||[],cloud=plan.data||{};
+  cloud.rows=(cloud.rows||[]).map((r,i)=>({...r,factQty:Number(shiftPlanFactRowForItem(factRows,r,i)?.factQty)||0}));
+  cloud.meta={...(cloud.meta||{}),brigade:plan.brigade_name||'',foreman:plan.foreman_name||session.brigadier_name};
+  cloud.updatedAt=plan.updated_at||new Date().toISOString();
+  localStorage.setItem(shiftPlanFactKey(),plan.id);localStorage.setItem(shiftPlanKey(),JSON.stringify(cloud));shiftPlanCloudReady=true;return;
  }
  if(!plan){localStorage.removeItem(shiftPlanFactKey());const empty={meta:{...readShiftPlan().meta},rows:[],manualRows:[],updatedAt:new Date().toISOString()};localStorage.setItem(shiftPlanKey(),JSON.stringify(empty));shiftPlanCloudReady=true;return}
  localStorage.setItem(shiftPlanFactKey(),plan.id);
- const cloud=plan.data||{};
- if(!shiftPlanIsAdmin()){
-  const facts=await sbRequest('/rest/v1/shift_plan_facts?select=fact_data&plan_id=eq.'+encodeURIComponent(plan.id)+'&user_id=eq.'+encodeURIComponent(session.user_id)+'&limit=1');
-  const factRows=facts?.[0]?.fact_data?.rows||[];
-  cloud.rows=(cloud.rows||[]).map((r,i)=>({...r,factQty:Number(shiftPlanFactRowForItem(factRows,r,i)?.factQty)||0}));
-  cloud.meta={...(cloud.meta||{}),brigade:plan.brigade_name||readShiftPlan().meta?.brigade||'',foreman:plan.foreman_name||''};
- }
- cloud.updatedAt=plan.updated_at||new Date().toISOString();
- localStorage.setItem(shiftPlanKey(),JSON.stringify(cloud));
- shiftPlanCloudReady=true;
+ const cloud=plan.data||{};cloud.updatedAt=plan.updated_at||new Date().toISOString();
+ localStorage.setItem(shiftPlanKey(),JSON.stringify(cloud));shiftPlanCloudReady=true;
 }
 async function renderBrigadeAssignments(){
  if(!shiftPlanIsAdmin())return;
  const box=document.getElementById('brigadeAssignments');if(!box)return;
- box.classList.remove('hidden');box.innerHTML='<p>Завантажую облікові записи…</p>';
- try{
-  const [users,assigned]=await Promise.all([
-   sbRequest('/rest/v1/profiles?select=user_id,display_name,role&role=eq.colleague&order=display_name.asc'),
-   sbRequest('/rest/v1/brigade_assignments?select=user_id,brigade_name')
-  ]);
-  const map=new Map((assigned||[]).map(x=>[x.user_id,x.brigade_name]));
-  box.innerHTML='<h3>Закріплення бригад за обліковими записами</h3><p class="muted">Кожному працівнику можна призначити одну бригаду. Зміни доступні лише адміністратору.</p>'+
-   (users||[]).map(u=>'<div class="shift-plan-controls"><label style="flex:1">'+safeText(u.display_name||'Працівник')+'<small>'+safeText(u.user_id)+'</small><input id="brigade_'+safeText(u.user_id)+'" value="'+safeText(map.get(u.user_id)||'')+'" placeholder="Наприклад, Бригада №1"></label><button class="btn secondary" onclick="saveBrigadeAssignment(\''+safeText(u.user_id)+'\')">Зберегти</button></div>').join('')||'<p>Немає облікових записів працівників.</p>';
- }catch(e){box.innerHTML='<p>Помилка завантаження: '+safeText(e.message||e)+'</p>'}
+ box.classList.remove('hidden');
+ box.innerHTML='<h3>Призначення бригадирів</h3><p class="muted">Бригадира призначаєш безпосередньо в плані на зміну. Обери прізвище в полі «Бригадир», потім опублікуй план. Один план — один відповідальний бригадир.</p><ul><li>Баряцький</li><li>Чиж</li><li>Коренєв</li><li>Шерстюк</li></ul>';
 }
 async function saveBrigadeAssignment(userId){
  if(!shiftPlanIsAdmin())throw Error('Лише адміністратор може призначати бригади.');
@@ -316,17 +313,14 @@ async function renderMasterShiftPlans(){
  const box=document.getElementById('masterShiftPlans');if(!box)return;box.classList.remove('hidden');box.innerHTML='<p>Завантажую плани та фактичне виконання…</p>';
  try{
   const date=readShiftPlan().meta?.date||new Date().toISOString().slice(0,10);
-  const [plans,assignments]=await Promise.all([
-   sbRequest('/rest/v1/shift_plans?select=id,plan_type,plan_date,shift_no,brigade_name,foreman_name,user_name,data,updated_at&plan_date=eq.'+encodeURIComponent(date)+'&order=brigade_name.asc'),
-   sbRequest('/rest/v1/brigade_assignments?select=user_id,brigade_name')
-  ]);
+  const plans=await sbRequest('/rest/v1/shift_plans?select=id,plan_type,plan_date,shift_no,brigade_name,foreman_name,user_name,data,updated_at&plan_date=eq.'+encodeURIComponent(date)+'&order=brigade_name.asc');
   const ids=(plans||[]).map(p=>p.id),facts=ids.length?await sbRequest('/rest/v1/shift_plan_facts?select=plan_id,user_id,fact_data,updated_at&plan_id=in.('+ids.join(',')+')&order=updated_at.desc'):[];
   // A plan may have more than one worker fact row. Use the most recently saved report for each brigade.
   const factMap=new Map();
   for(const f of (facts||[])){if(!factMap.has(f.plan_id))factMap.set(f.plan_id,f)}
   const products=productRecords();let totalPlan=0,totalFact=0,totalConcrete=0;
   const rows=(plans||[]).map(plan=>{
-   const d=plan.data||{},items=d.rows||[],factEntry=factMap.get(plan.id),factRows=factEntry?.fact_data?.rows||[],assignedWorkers=(assignments||[]).filter(a=>String(a.brigade_name||'').trim()===String(plan.brigade_name||'').trim());
+   const d=plan.data||{},items=d.rows||[],factEntry=factMap.get(plan.id),factRows=factEntry?.fact_data?.rows||[],assignedWorkers=plan.foreman_name?[{brigadier_name:plan.foreman_name}]:[];
    const detail=items.map(r=>{
     const p=products.find(x=>String(x.id)===String(r.productId))||{},qty=Number(r.qty)||0;
     const factRow=shiftPlanFactRowForItem(factRows,r,items.indexOf(r));
@@ -339,9 +333,9 @@ async function renderMasterShiftPlans(){
     :assignedWorkers.length?'Працівника призначено, але факт ще не збережено':'До цієї бригади не призначено працівника — факт не може надійти';
    return '<h4>'+safeText(plan.brigade_name||'Бригада')+' — '+safeText(shiftPlanNames[plan.plan_type]||plan.plan_type)+'</h4><p>Бригадир: '+safeText(plan.foreman_name||'—')+' · Зміна: '+safeText(plan.shift_no||'—')+'</p><p class="muted">'+factStatus+'</p><div class="shift-plan-editor"><table><thead><tr><th>Виріб</th><th>План, шт.</th><th>Факт, шт.</th><th>Залишок</th><th>Бетон, м³</th></tr></thead><tbody>'+detail+'</tbody></table></div>';
   }).join('');
-  const unassignedPlans=(plans||[]).filter(p=>!(assignments||[]).some(a=>String(a.brigade_name||'').trim()===String(p.brigade_name||'').trim()));
+  const unassignedPlans=(plans||[]).filter(p=>!p.foreman_name);
   const assignmentNotice=unassignedPlans.length
-   ?'<div class="warning">Не всі бригади мають призначених працівників: '+unassignedPlans.map(p=>safeText(p.brigade_name)).join(', ')+'. Для таких бригад працівник не зможе завантажити план і зберегти факт. Перевір точну назву бригади в налаштуваннях.</div><button class="btn secondary" onclick="renderBrigadeAssignments()">Налаштувати бригади працівників</button>'
+   ?'<div class="warning">Не всім планам призначено бригадира: '+unassignedPlans.map(p=>safeText(p.brigade_name)).join(', ')+'. Для таких планів бригадир не зможе завантажити план і зберегти факт. Обери бригадира в плані та опублікуй його.</div><button class="btn secondary" onclick="renderBrigadeAssignments()">Налаштувати бригади працівників</button>'
    :'';
   box.innerHTML='<div class="section-heading"><h3>Загальний план майстра • '+safeText(date)+'</h3><button class="btn secondary" onclick="document.getElementById(\'masterShiftPlans\').classList.add(\'hidden\')">Закрити</button></div>'+assignmentNotice+(rows||'<p>На цю дату ще немає опублікованих планів.</p>')+'<h3>Разом по всіх бригадах</h3><p>План: '+totalPlan+' шт. · Факт: '+totalFact+' шт. · Залишок: '+Math.max(0,totalPlan-totalFact)+' шт. · Бетон за планом: '+totalConcrete.toFixed(3)+' м³</p><button class="btn secondary" onclick="renderMasterShiftPlans()">⟳ Оновити факт</button><button class="btn" onclick="printMasterShiftPlans()">Друк загального плану</button>';
  }catch(e){box.innerHTML='<p>Не вдалося завантажити плани: '+safeText(e.message||e)+'</p>'}
@@ -998,7 +992,7 @@ async function ensureFreshButdetalSession(){
  return butdetalRefreshPromise;
 }
 async function signInButdetal(){
- const cfg=getSbConfig(),email=document.getElementById('authEmail').value.trim(),password=document.getElementById('authPassword').value,displayName=document.getElementById('authDisplayName').value.trim();
+ const cfg=getSbConfig(),email=document.getElementById('authEmail').value.trim(),password=document.getElementById('authPassword').value,displayName=document.getElementById('authDisplayName').value.trim(),brigadierName=document.getElementById('authBrigadierName').value,pin=document.getElementById('authBrigadierPin').value.trim();
  if(!cfg.url||!cfg.key){authMsg('Спочатку введи адресу Supabase і публічний ключ та збережи їх.',true);return}if(!email||!password){authMsg('Введи email і пароль.',true);return}
  authMsg('Перевіряю облікові дані…');
  try{
@@ -1006,11 +1000,21 @@ async function signInButdetal(){
   const d=await r.json();if(!r.ok)throw Error(d.msg||d.message||d.error_description||'Невірний email або пароль.');
   const p=await fetch(cfg.url+'/rest/v1/profiles?select=role,display_name&user_id=eq.'+encodeURIComponent(d.user.id),{headers:{'apikey':cfg.key,'Authorization':'Bearer '+d.access_token}});
   const rows=await p.json();if(!p.ok||!rows.length)throw Error('Не вдалося прочитати роль користувача. Перевір SQL-міграцію та RLS.');
-  const profile=rows[0];if(profile.role==='colleague'&&!displayName)throw Error('Працівнику потрібно вказати своє ім’я для журналу змін.');
+  const profile=rows[0];let foremanSession=null;
+  if(profile.role==='colleague'){
+   if(!displayName)throw Error('Вкажи своє ім’я для журналу змін.');
+   if(!brigadierName)throw Error('Оберіть себе у списку бригадирів.');
+   if(!/^[0-9]{4}$/.test(pin))throw Error('Введи чотиризначний PIN-код.');
+   authMsg('Перевіряю PIN бригадира…');
+   const vr=await fetch(cfg.url+'/functions/v1/butdetal-brigadier-access',{method:'POST',headers:{'Content-Type':'application/json','apikey':cfg.key,'Authorization':'Bearer '+d.access_token},body:JSON.stringify({action:'login',brigadier_name:brigadierName,pin})});
+   const vd=await vr.json();if(!vr.ok)throw Error(vd.error||'Не вдалося підтвердити бригадира.');
+   foremanSession={brigadier_name:vd.brigadier_name,brigadier_token:vd.token,brigadier_expires_at:vd.expires_at};
+  }
   if(document.getElementById('rememberUser').checked)localStorage.setItem('butdetal_remember_user_v1',JSON.stringify({email,displayName}));else localStorage.removeItem('butdetal_remember_user_v1');
   if(window.AndroidStorage&&AndroidStorage.clearCredential)AndroidStorage.clearCredential();
-  const session={access_token:d.access_token,refresh_token:d.refresh_token,expires_at:Date.now()+(d.expires_in||3600)*1000,user_id:d.user.id,email:d.user.email,role:profile.role,display_name:profile.role==='admin'?(profile.display_name||'Адміністратор'):displayName};
-  persistButdetalSession(session);document.getElementById('authPassword').value='';authMsg('');setButdetalWorkspace(session,true);
+  const session={access_token:d.access_token,refresh_token:d.refresh_token,expires_at:Date.now()+(d.expires_in||3600)*1000,user_id:d.user.id,email:d.user.email,role:profile.role,display_name:profile.role==='admin'?(profile.display_name||'Адміністратор'):displayName,...(foremanSession||{})};
+  if(profile.role==='colleague')['span1','span2','span3','repair1'].forEach(k=>{localStorage.removeItem('bua_shift_plan_'+k);localStorage.removeItem('bua_shift_plan_remote_id_bua_shift_plan_'+k)});
+  persistButdetalSession(session);document.getElementById('authPassword').value='';document.getElementById('authBrigadierPin').value='';authMsg('');setButdetalWorkspace(session,true);
  }catch(e){authMsg(e.message||'Помилка входу.',true)}
 }
 async function restoreButdetalSession(){
