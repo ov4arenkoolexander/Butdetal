@@ -312,17 +312,36 @@ async function saveBrigadeAssignment(userId){
 }
 async function renderMasterShiftPlans(){
  if(!shiftPlanIsAdmin()){alert('Загальний план доступний адміністратору.');return}
- const box=document.getElementById('masterShiftPlans');if(!box)return;box.classList.remove('hidden');box.innerHTML='<p>Завантажую плани бригад…</p>';
+ const box=document.getElementById('masterShiftPlans');if(!box)return;box.classList.remove('hidden');box.innerHTML='<p>Завантажую плани та фактичне виконання…</p>';
  try{
   const date=readShiftPlan().meta?.date||new Date().toISOString().slice(0,10);
-  const plans=await sbRequest('/rest/v1/shift_plans?select=id,plan_type,plan_date,shift_no,brigade_name,foreman_name,user_name,data,updated_at&plan_date=eq.'+encodeURIComponent(date)+'&order=brigade_name.asc');
-  const ids=(plans||[]).map(p=>p.id),facts=ids.length?await sbRequest('/rest/v1/shift_plan_facts?select=plan_id,fact_data&plan_id=in.('+ids.join(',')+')'):[],factMap=new Map((facts||[]).map(f=>[f.plan_id,f.fact_data||{}]));
+  const [plans,assignments]=await Promise.all([
+   sbRequest('/rest/v1/shift_plans?select=id,plan_type,plan_date,shift_no,brigade_name,foreman_name,user_name,data,updated_at&plan_date=eq.'+encodeURIComponent(date)+'&order=brigade_name.asc'),
+   sbRequest('/rest/v1/brigade_assignments?select=user_id,brigade_name')
+  ]);
+  const ids=(plans||[]).map(p=>p.id),facts=ids.length?await sbRequest('/rest/v1/shift_plan_facts?select=plan_id,user_id,fact_data,updated_at&plan_id=in.('+ids.join(',')+')&order=updated_at.desc'):[];
+  // A plan may have more than one worker fact row. Use the most recently saved report for each brigade.
+  const factMap=new Map();
+  for(const f of (facts||[])){if(!factMap.has(f.plan_id))factMap.set(f.plan_id,f)}
   const products=productRecords();let totalPlan=0,totalFact=0,totalConcrete=0;
-  const rows=(plans||[]).map(plan=>{const d=plan.data||{},items=d.rows||[],factRows=factMap.get(plan.id)?.rows||[];
-   const detail=items.map(r=>{const p=products.find(x=>String(x.id)===String(r.productId))||{},qty=Number(r.qty)||0,fact=Number(factRows.find(x=>String(x.productId)===String(r.productId))?.factQty)||0,vol=Number(p.volume)||0;totalPlan+=qty;totalFact+=fact;totalConcrete+=qty*vol;return '<tr><td>'+safeText(p.mark||p.name||r.productLabel||'Виріб')+'</td><td>'+qty+'</td><td>'+fact+'</td><td>'+Math.max(0,qty-fact)+'</td><td>'+(qty*vol).toFixed(3)+'</td></tr>'}).join('');
-   return '<h4>'+safeText(plan.brigade_name||'Бригада')+' — '+safeText(shiftPlanNames[plan.plan_type]||plan.plan_type)+'</h4><p>Бригадир: '+safeText(plan.foreman_name||'—')+' · Зміна: '+safeText(plan.shift_no||'—')+'</p><div class="shift-plan-editor"><table><thead><tr><th>Виріб</th><th>План, шт.</th><th>Факт, шт.</th><th>Залишок</th><th>Бетон, м³</th></tr></thead><tbody>'+detail+'</tbody></table></div>';
+  const rows=(plans||[]).map(plan=>{
+   const d=plan.data||{},items=d.rows||[],factEntry=factMap.get(plan.id),factRows=factEntry?.fact_data?.rows||[];
+   const detail=items.map(r=>{
+    const p=products.find(x=>String(x.id)===String(r.productId))||{},qty=Number(r.qty)||0;
+    const factRow=factRows.find(x=>String(x.productId)===String(r.productId));
+    const fact=factEntry?Number(factRow?.factQty)||0:0,vol=Number(p.volume)||0;
+    totalPlan+=qty;totalFact+=fact;totalConcrete+=qty*vol;
+    return '<tr><td>'+safeText(p.mark||p.name||r.productLabel||'Виріб')+'</td><td>'+qty+'</td><td>'+(factEntry?fact:'—')+'</td><td>'+Math.max(0,qty-fact)+'</td><td>'+(qty*vol).toFixed(3)+'</td></tr>';
+   }).join('');
+   const factStatus=factEntry
+    ?'Факт збережено: '+new Date(factEntry.updated_at||Date.now()).toLocaleString('uk-UA')
+    :'Факт ще не надійшов від працівника';
+   return '<h4>'+safeText(plan.brigade_name||'Бригада')+' — '+safeText(shiftPlanNames[plan.plan_type]||plan.plan_type)+'</h4><p>Бригадир: '+safeText(plan.foreman_name||'—')+' · Зміна: '+safeText(plan.shift_no||'—')+'</p><p class="muted">'+factStatus+'</p><div class="shift-plan-editor"><table><thead><tr><th>Виріб</th><th>План, шт.</th><th>Факт, шт.</th><th>Залишок</th><th>Бетон, м³</th></tr></thead><tbody>'+detail+'</tbody></table></div>';
   }).join('');
-  box.innerHTML='<div class="section-heading"><h3>Загальний план майстра • '+safeText(date)+'</h3><button class="btn secondary" onclick="document.getElementById(\'masterShiftPlans\').classList.add(\'hidden\')">Закрити</button></div>'+(rows||'<p>На цю дату ще немає опублікованих планів.</p>')+'<h3>Разом по всіх бригадах</h3><p>План: '+totalPlan+' шт. · Факт: '+totalFact+' шт. · Залишок: '+Math.max(0,totalPlan-totalFact)+' шт. · Бетон за планом: '+totalConcrete.toFixed(3)+' м³</p><button class="btn" onclick="printMasterShiftPlans()">Друк загального плану</button>';
+  const assignmentNotice=!(assignments||[]).length
+   ?'<div class="warning">Працівникам ще не призначено жодної бригади. Через це вони не можуть завантажити план і зберегти факт. Натисни «Налаштувати бригади», признач працівника та повтори збереження факту.</div><button class="btn secondary" onclick="renderBrigadeAssignments()">Налаштувати бригади працівників</button>'
+   :'';
+  box.innerHTML='<div class="section-heading"><h3>Загальний план майстра • '+safeText(date)+'</h3><button class="btn secondary" onclick="document.getElementById(\'masterShiftPlans\').classList.add(\'hidden\')">Закрити</button></div>'+assignmentNotice+(rows||'<p>На цю дату ще немає опублікованих планів.</p>')+'<h3>Разом по всіх бригадах</h3><p>План: '+totalPlan+' шт. · Факт: '+totalFact+' шт. · Залишок: '+Math.max(0,totalPlan-totalFact)+' шт. · Бетон за планом: '+totalConcrete.toFixed(3)+' м³</p><button class="btn secondary" onclick="renderMasterShiftPlans()">⟳ Оновити факт</button><button class="btn" onclick="printMasterShiftPlans()">Друк загального плану</button>';
  }catch(e){box.innerHTML='<p>Не вдалося завантажити плани: '+safeText(e.message||e)+'</p>'}
 }
 function printMasterShiftPlans(){
