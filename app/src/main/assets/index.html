@@ -330,7 +330,7 @@ async function renderMasterShiftPlans(){
    }).join('');
    const factStatus=factEntry
     ?'Факт збережено: '+new Date(factEntry.updated_at||Date.now()).toLocaleString('uk-UA')
-    :assignedWorkers.length?'Працівника призначено, але факт ще не збережено':'До цієї бригади не призначено працівника — факт не може надійти';
+    :assignedWorkers.length?'Працівника призначено, але факт ще не збережено':'До цієї бригади не призначено бригадира — факт не може надійти';
    return '<h4>'+safeText(plan.brigade_name||'Бригада')+' — '+safeText(shiftPlanNames[plan.plan_type]||plan.plan_type)+'</h4><p>Бригадир: '+safeText(plan.foreman_name||'—')+' · Зміна: '+safeText(plan.shift_no||'—')+'</p><p class="muted">'+factStatus+'</p><div class="shift-plan-editor"><table><thead><tr><th>Виріб</th><th>План, шт.</th><th>Факт, шт.</th><th>Залишок</th><th>Бетон, м³</th></tr></thead><tbody>'+detail+'</tbody></table></div>';
   }).join('');
   const unassignedPlans=(plans||[]).filter(p=>!p.foreman_name);
