@@ -98,7 +98,7 @@ footer{text-align:center;color:#8390a0;font-size:12px;padding:24px}
 <div class="warning">Довідник допомагає з обліком і довідковими обчисленнями, але не замінює робочий проєкт конструктора та чинні будівельні норми.</div>
 </section>
 <section id="sync" class="page hidden">
-<div class="card"><h2>☁️ Синхронізація каталогу</h2><p class="muted">Картки виробів, фото, креслення та PDF зі спільним сервером.</p><div class="sync-line"><span id="syncStatus">Очікує синхронізації</span></div><button class="btn" onclick="syncButdetalRecords()">⟳ Синхронізувати каталог і файли</button></div>
+<div class="card"><h2>☁️ Синхронізація каталогу</h2><p class="muted">Картки виробів, фото, креслення та PDF зі спільним сервером.</p><div class="sync-line"><span id="syncStatus">Очікує синхронізації</span></div><button class="btn" onclick="syncButdetalRecords()">⟳ Синхронізувати каталог і файли</button><div id="syncLastTime" class="muted" style="margin-top:9px">Остання синхронізація: ще не виконувалась</div></div>
 <div class="card"><h2>📊 Excel — імпорт та експорт</h2><p class="muted">Працює офлайн. Книга Excel містить чотири аркуші: Каталог, Нормативи, Формули та Таблиці.</p><p class="muted">Обери, які розділи включити у файл для друку або передачі.</p>
 <div class="excel-select"><label><input type="checkbox" class="excel-sheet-choice" value="Каталог" checked> Каталог виробів</label><label><input type="checkbox" class="excel-sheet-choice" value="Нормативи" checked> Нормативи</label><label><input type="checkbox" class="excel-sheet-choice" value="Формули" checked> Формули</label><label><input type="checkbox" class="excel-sheet-choice" value="Таблиці" checked> Таблиці</label></div>
 <button class="btn secondary" onclick="exportSelectedExcel()">⬇ Експортувати вибране в Excel</button><div id="excelExportStatus" class="muted" aria-live="polite"></div><label>Імпорт книги Excel (.xlsx)</label><input id="excelFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"><button class="btn" onclick="previewButdetalExcel()">Перевірити файл та показати попередній перегляд</button><div id="excelPreview" class="muted" aria-live="polite"></div><div id="excelActions" class="hidden"><button class="btn" onclick="applyButdetalExcel(true)">Оновити дублікати та додати нові</button><button class="btn secondary" onclick="applyButdetalExcel(false)">Пропустити дублікати, додати лише нові</button></div><button class="btn secondary" onclick="downloadExcelTemplate()">Завантажити порожній шаблон Excel</button></div>
@@ -974,6 +974,14 @@ async function restoreButdetalSession(){
  finally{gate.classList.remove('auth-checking')}
 }
 
+// Час останньої успішної синхронізації зберігається локально на пристрої.
+function renderLastSyncTime(){
+ const el=document.getElementById('syncLastTime');if(!el)return;
+ const raw=localStorage.getItem('butdetal_last_successful_sync_v1');
+ if(!raw){el.textContent='Остання синхронізація: ще не виконувалась';return}
+ const d=new Date(raw);
+ el.textContent='Остання синхронізація: '+(Number.isNaN(d.getTime())?'ще не виконувалась':d.toLocaleString('uk-UA',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}));
+}
 // Синхронізація каталогу та спільного архіву файлів Supabase Storage.
 
 async function sbRequest(path,options={}){const cfg=getSbConfig(),session=await ensureFreshButdetalSession();if(!cfg.url||!cfg.key||!session?.access_token)throw Error('Немає активного входу або налаштувань сервера.');const headers={apikey:cfg.key,Authorization:'Bearer '+session.access_token,'Content-Type':'application/json',...(options.headers||{})};const r=await fetch(cfg.url+path,{...options,headers});if(!r.ok){let t='HTTP '+r.status;try{const j=await r.json();t=j.message||j.details||j.hint||t}catch(e){}throw Error(t)}if(r.status===204)return null;const txt=await r.text();return txt?JSON.parse(txt):null}
@@ -1030,6 +1038,7 @@ async function syncButdetalRecords(){
   if(status)status.textContent='Каталог: '+synced.length+' актуальних карток. Синхронізую архів…';
   const files=await syncButdetalArchive();
   if(status)status.textContent='Готово: '+synced.length+' карток, '+(files.uploaded+files.downloaded)+' файлів'+(files.missing?' · пропущено відсутніх: '+files.missing:'')+' • '+new Date().toLocaleTimeString('uk-UA');
+  localStorage.setItem('butdetal_last_successful_sync_v1',new Date().toISOString());renderLastSyncTime();
  }catch(e){
   if(status)status.textContent='Синхронізація не завершена: '+(e&&e.message?e.message:'помилка');
   throw e;
@@ -1051,6 +1060,7 @@ const remote=await sbRequest('/rest/v1/archive_files?select=id,owner_id,folder,o
 async function deleteCloudProduct(id){const s=currentButdetalSession();if(!s)return;await sbRequest('/rest/v1/shared_records?id=eq.'+encodeURIComponent(id)+'&record_type=eq.product',{method:'DELETE',headers:{Prefer:'return=minimal'}})}
 
 async function signOutButdetal(){const session=currentButdetalSession(),cfg=getSbConfig();try{if(session?.access_token)await fetch(cfg.url+'/auth/v1/logout?scope=local',{method:'POST',headers:{apikey:cfg.key,Authorization:'Bearer '+session.access_token}})}catch(e){console.warn('Server logout:',e)}finally{clearButdetalSession();if(window.AndroidStorage&&AndroidStorage.clearCredential)AndroidStorage.clearCredential();document.getElementById('appMain').classList.add('hidden');document.getElementById('authGate').classList.remove('hidden');const b=document.getElementById('signOutButton');if(b)b.remove();authMsg('Вихід виконано. Для наступного входу введи email і пароль.')}}
+renderLastSyncTime();
 (function initButdetalAuth(){const c=getSbConfig();if(c.url)document.getElementById('sbUrl').value=c.url;if(c.key)document.getElementById('sbKey').value=c.key;try{const u=JSON.parse(localStorage.getItem('butdetal_remember_user_v1')||'null');if(u){document.getElementById('authEmail').value=u.email||'';document.getElementById('authDisplayName').value=u.displayName||'';document.getElementById('rememberUser').checked=true}}catch(e){}restoreButdetalSession()})();
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&currentButdetalSession())ensureFreshButdetalSession().catch(e=>console.warn('Session refresh:',e))});
 
