@@ -276,7 +276,7 @@ async function loadShiftPlanFromCloud(){
   const rows=await sbRequest('/rest/v1/shift_plans?select=id,data,updated_at,foreman_name&plan_type=eq.'+encodeURIComponent(v.plan_type)+'&plan_date=eq.'+encodeURIComponent(v.plan_date)+'&shift_no=eq.'+encodeURIComponent(v.shift_no)+'&brigade_name=eq.'+encodeURIComponent(brigade)+'&limit=1');
   plan=rows?.[0];
  }
- if(!plan){shiftPlanCloudReady=true;return}
+ if(!plan){localStorage.removeItem(shiftPlanFactKey());const empty={meta:{...readShiftPlan().meta},rows:[],manualRows:[],updatedAt:new Date().toISOString()};localStorage.setItem(shiftPlanKey(),JSON.stringify(empty));shiftPlanCloudReady=true;return}
  localStorage.setItem(shiftPlanFactKey(),plan.id);
  const cloud=plan.data||{};
  if(!shiftPlanIsAdmin()){
@@ -331,7 +331,7 @@ function printMasterShiftPlans(){
 }
 function shiftPlanMetaChange(key,value){
  if(!shiftPlanIsAdmin()&&!['date','shift'].includes(key))return;
- let d=readShiftPlan();d.meta=d.meta||{};d.meta[key]=value;if(shiftPlanIsAdmin())saveShiftPlanData(d);else{d.updatedAt=new Date().toISOString();localStorage.setItem(shiftPlanKey(),JSON.stringify(d));shiftPlanCloudReady=false;}
+ let d=readShiftPlan();d.meta=d.meta||{};d.meta[key]=value;d.updatedAt=new Date().toISOString();localStorage.setItem(shiftPlanKey(),JSON.stringify(d));shiftPlanCloudReady=false;
  const m=d.meta;if(m.date&&m.shift){const k=shiftPlanKey()+'_'+m.date+'_'+m.shift;shiftPlanLoadedKeys.delete(k);loadShiftPlanFromCloud().then(()=>{shiftPlanLoadedKeys.add(k);renderShiftPlan()}).catch(e=>{const st=document.getElementById('shiftPlanStatus');if(st)st.textContent=e.message||e})}
 }
 function renderShiftPlan(){
