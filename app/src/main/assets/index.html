@@ -262,7 +262,7 @@ async function syncShiftPlanNow(){
  await sbRequest('/rest/v1/shift_plan_facts?on_conflict=plan_id,user_id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({plan_id:planId,user_id:session.user_id,fact_data:fact,updated_at:fact.updatedAt})});
  const el=document.getElementById('shiftPlanStatus');if(el)el.textContent='Факт виконання збережено на сервері.';
 }
-function shiftPlanFactRowForItem(factRows,row,index){return factRows.find(x=>row.rowKey&&String(x.rowKey||'')===String(row.rowKey))||factRows.find(x=>row.productId&&String(x.productId||'')===String(row.productId))||factRows.find(x=>Number.isInteger(Number(x.rowIndex))&&Number(x.rowIndex)===index)||null}
+function shiftPlanFactRowForItem(factRows,row,index){return factRows.find(x=>row.rowKey&&String(x.rowKey||'')===String(row.rowKey))||factRows.find(x=>x.rowIndex!==undefined&&Number(x.rowIndex)===index)||factRows.find(x=>row.productId&&String(x.productId||'')===String(row.productId))||null}
 async function loadShiftPlanFromCloud(){
  const session=await ensureFreshButdetalSession(),v=shiftPlanIdentity(readShiftPlan());
  if(!v.plan_date||!v.shift_no)return;
