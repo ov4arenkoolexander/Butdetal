@@ -237,7 +237,7 @@ const shiftPlanNames={span1:'План 1 прольоту',span2:'План 2 пр
 function shiftPlanKey(){return 'bua_shift_plan_'+document.getElementById('shiftPlanType').value}
 function readShiftPlan(){try{return JSON.parse(localStorage.getItem(shiftPlanKey())||'{}')}catch(e){return {}}}
 let shiftPlanSyncTimer=null,shiftPlanCloudReady=false;const shiftPlanLoadedKeys=new Set();
-function saveShiftPlanData(d){d.updatedAt=new Date().toISOString();localStorage.setItem(shiftPlanKey(),JSON.stringify(d));if(shiftPlanCloudReady){clearTimeout(shiftPlanSyncTimer);shiftPlanSyncTimer=setTimeout(()=>syncShiftPlanNow().catch(e=>{const el=document.getElementById('shiftPlanStatus');if(el)el.textContent='Локально збережено. Помилка хмарної синхронізації: '+(e.message||e)}),900)}}
+function saveShiftPlanData(d){d.updatedAt=new Date().toISOString();localStorage.setItem(shiftPlanKey(),JSON.stringify(d));if(shiftPlanCloudReady){clearTimeout(shiftPlanSyncTimer);shiftPlanSyncTimer=setTimeout(()=>syncShiftPlanNow().catch(e=>{const el=document.getElementById('shiftPlanStatus');if(el)el.textContent='Локально збережено. Помилка синхронізації: '+(e.message||e)}),900)}}
 
 function shiftPlanIsAdmin(){return currentButdetalSession()?.role==='admin'}
 function shiftPlanIdentity(d){
@@ -331,7 +331,7 @@ function printMasterShiftPlans(){
 }
 function shiftPlanMetaChange(key,value){
  if(!shiftPlanIsAdmin()&&!['date','shift'].includes(key))return;
- let d=readShiftPlan();d.meta=d.meta||{};d.meta[key]=value;saveShiftPlanData(d);
+ let d=readShiftPlan();d.meta=d.meta||{};d.meta[key]=value;if(shiftPlanIsAdmin())saveShiftPlanData(d);else{d.updatedAt=new Date().toISOString();localStorage.setItem(shiftPlanKey(),JSON.stringify(d));shiftPlanCloudReady=false;}
  const m=d.meta;if(m.date&&m.shift){const k=shiftPlanKey()+'_'+m.date+'_'+m.shift;shiftPlanLoadedKeys.delete(k);loadShiftPlanFromCloud().then(()=>{shiftPlanLoadedKeys.add(k);renderShiftPlan()}).catch(e=>{const st=document.getElementById('shiftPlanStatus');if(st)st.textContent=e.message||e})}
 }
 function renderShiftPlan(){
@@ -372,13 +372,13 @@ function renderShiftPlan(){
  '</tbody></table></div><button type="button" class="btn secondary" onclick="addShiftManualRow()">＋ Додати ручний рядок</button><p class="muted">У каталозі: '+a.length+' виробів. Зміни зберігаються на пристрої та синхронізуються із сервером після заповнення дати й назви бригади.</p>';
  document.getElementById('shiftPlanStatus').textContent=a.length?'Вибір виробу — зі списку каталогу. План, факт виконання та додаткові записи редагуються в клітинках.':'Каталог виробів порожній на цьому пристрої. Синхронізуй або імпортуй каталог.';
 }
-function selectShiftPlanProduct(i,id){let d=readShiftPlan();d.rows=d.rows||[];if(!d.rows[i])return;const p=productRecords().find(x=>String(x.id)===String(id));d.rows[i].productId=p?String(p.id):'';d.rows[i].productLabel=p?shiftPlanProductLabel(p):'';saveShiftPlanData(d);renderShiftPlan()}
-function addShiftPlanRow(){let d=readShiftPlan();d.rows=d.rows||[];d.rows.push({productId:'',productLabel:'',qty:''});saveShiftPlanData(d);renderShiftPlan()}
-function updateShiftPlanRow(i,k,v){let d=readShiftPlan();d.rows=d.rows||[];if(d.rows[i])d.rows[i][k]=v;saveShiftPlanData(d);renderShiftPlan()}
-function removeShiftPlanRow(i){let d=readShiftPlan();d.rows=d.rows||[];d.rows.splice(i,1);saveShiftPlanData(d);renderShiftPlan()}
-function addShiftManualRow(){let d=readShiftPlan();d.manualRows=d.manualRows||[];d.manualRows.push({name:'',concreteGrade:'',concreteTaken:'',qty:''});saveShiftPlanData(d);renderShiftPlan()}
-function updateShiftManualRow(i,k,v){let d=readShiftPlan();d.manualRows=d.manualRows||[];if(d.manualRows[i])d.manualRows[i][k]=v;saveShiftPlanData(d);renderShiftPlan()}
-function removeShiftManualRow(i){let d=readShiftPlan();d.manualRows=d.manualRows||[];d.manualRows.splice(i,1);saveShiftPlanData(d);renderShiftPlan()}
+function selectShiftPlanProduct(i,id){if(!shiftPlanIsAdmin())return;let d=readShiftPlan();d.rows=d.rows||[];if(!d.rows[i])return;const p=productRecords().find(x=>String(x.id)===String(id));d.rows[i].productId=p?String(p.id):'';d.rows[i].productLabel=p?shiftPlanProductLabel(p):'';saveShiftPlanData(d);renderShiftPlan()}
+function addShiftPlanRow(){if(!shiftPlanIsAdmin())return;let d=readShiftPlan();d.rows=d.rows||[];d.rows.push({productId:'',productLabel:'',qty:''});saveShiftPlanData(d);renderShiftPlan()}
+function updateShiftPlanRow(i,k,v){if(!shiftPlanIsAdmin()&&k!=='factQty')return;let d=readShiftPlan();d.rows=d.rows||[];if(d.rows[i])d.rows[i][k]=v;saveShiftPlanData(d);renderShiftPlan()}
+function removeShiftPlanRow(i){if(!shiftPlanIsAdmin())return;let d=readShiftPlan();d.rows=d.rows||[];d.rows.splice(i,1);saveShiftPlanData(d);renderShiftPlan()}
+function addShiftManualRow(){if(!shiftPlanIsAdmin())return;let d=readShiftPlan();d.manualRows=d.manualRows||[];d.manualRows.push({name:'',concreteGrade:'',concreteTaken:'',qty:''});saveShiftPlanData(d);renderShiftPlan()}
+function updateShiftManualRow(i,k,v){if(!shiftPlanIsAdmin())return;let d=readShiftPlan();d.manualRows=d.manualRows||[];if(d.manualRows[i])d.manualRows[i][k]=v;saveShiftPlanData(d);renderShiftPlan()}
+function removeShiftManualRow(i){if(!shiftPlanIsAdmin())return;let d=readShiftPlan();d.manualRows=d.manualRows||[];d.manualRows.splice(i,1);saveShiftPlanData(d);renderShiftPlan()}
 function printShiftPlan(){let d=readShiftPlan(),rows=d.rows||[],manual=d.manualRows||[],a=productRecords(),name=shiftPlanNames[document.getElementById('shiftPlanType').value],esc=v=>safeText(v||''),total=0,meta=d.meta||{};let upper=rows.map((r,i)=>{let p=shiftPlanProductForRow(r,a)||{},v=Number(p.volume)||0,q=Number(r.qty)||0;total+=v*q;return '<tr><td>'+(i+1)+'</td><td>'+esc(p.mark||p.name)+'</td><td>'+esc(p.concreteGrade)+'</td><td>'+esc(p.rebar)+'</td><td>'+v.toFixed(3)+'</td><td>'+(v*q).toFixed(3)+'</td><td>'+q+'</td><td>'+(Number(r.factQty)||0)+'</td><td>'+Math.max(0,q-(Number(r.factQty)||0))+'</td></tr>'}).join('');let lower=manual.map((r,i)=>'<tr><td>'+(i+1)+'</td><td>'+esc(r.name)+'</td><td>'+esc(r.concreteGrade)+'</td><td>'+esc(r.concreteTaken)+'</td><td>'+esc(r.qty)+'</td></tr>').join('');let count=Math.max(5,20-manual.length);let html='<div id="shiftPrintSheet"><div class="print-head">BUTDETAL — '+name+'</div><div class="meta"><span>Дата: '+esc(meta.date)+'</span><span>Зміна: '+esc(meta.shift)+'</span><span>Бригадир: '+esc(meta.foreman)+'</span></div><div class="meta">Бригада: '+esc(meta.brigade)+'</div><table><thead><tr><th>№</th><th>Найменування</th><th>Марка бетону</th><th>Армування</th><th>Бетон на 1 шт., м³</th><th>Бетон на план, м³</th><th>План, шт.</th><th>Факт, шт.</th><th>Залишок, шт.</th></tr></thead><tbody>'+upper+'</tbody></table><table class="lower"><thead><tr><th>№</th><th>Найменування</th><th>Марка бетону</th><th>Взято бетону, м³</th><th>Кількість, шт.</th></tr></thead><tbody>'+lower+Array.from({length:count},(_,i)=>'<tr><td>'+(manual.length+i+1)+'</td><td></td><td></td><td></td><td></td></tr>').join('')+'</tbody></table><b>Бетон за планом: '+total.toFixed(3)+' м³</b></div>';document.getElementById('shiftPrintSheet')?.remove();document.body.insertAdjacentHTML('beforeend',html);document.body.classList.add('shift-print-mode');if(window.AndroidStorage&&AndroidStorage.printCurrentPage){AndroidStorage.printCurrentPage()}else{window.print()}}
 </script>
 <script src="study.js"></script>
