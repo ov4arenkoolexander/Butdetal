@@ -1013,7 +1013,7 @@ async function signInButdetal(){
   if(document.getElementById('rememberUser').checked)localStorage.setItem('butdetal_remember_user_v1',JSON.stringify({email,displayName}));else localStorage.removeItem('butdetal_remember_user_v1');
   if(window.AndroidStorage&&AndroidStorage.clearCredential)AndroidStorage.clearCredential();
   const session={access_token:d.access_token,refresh_token:d.refresh_token,expires_at:Date.now()+(d.expires_in||3600)*1000,user_id:d.user.id,email:d.user.email,role:profile.role,display_name:profile.role==='admin'?(profile.display_name||'Адміністратор'):displayName,...(foremanSession||{})};
-  if(profile.role==='colleague')['span1','span2','span3','repair1'].forEach(k=>{localStorage.removeItem('bua_shift_plan_'+k);localStorage.removeItem('bua_shift_plan_remote_id_bua_shift_plan_'+k)});
+  if(profile.role==='colleague'){shiftPlanLoadedKeys.clear();['span1','span2','span3','repair1'].forEach(k=>{localStorage.removeItem('bua_shift_plan_'+k);localStorage.removeItem('bua_shift_plan_remote_id_bua_shift_plan_'+k)})}
   persistButdetalSession(session);document.getElementById('authPassword').value='';document.getElementById('authBrigadierPin').value='';authMsg('');setButdetalWorkspace(session,true);
  }catch(e){authMsg(e.message||'Помилка входу.',true)}
 }
