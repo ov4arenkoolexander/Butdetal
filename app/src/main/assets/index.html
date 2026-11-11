@@ -282,7 +282,7 @@ async function loadShiftPlanFromCloud(){
  if(!shiftPlanIsAdmin()){
   const facts=await sbRequest('/rest/v1/shift_plan_facts?select=fact_data&plan_id=eq.'+encodeURIComponent(plan.id)+'&user_id=eq.'+encodeURIComponent(session.user_id)+'&limit=1');
   const factRows=facts?.[0]?.fact_data?.rows||[];
-  cloud.rows=(cloud.rows||[]).map(r=>({...r,factQty:Number(factRows.find(x=>String(x.productId)===String(r.productId))?.factQty)||0}));
+  cloud.rows=(cloud.rows||[]).map(r=>({...r,factQty:Number(factRows.find(x=>r.rowKey?String(x.rowKey||'')===String(r.rowKey):String(x.productId)===String(r.productId))?.factQty)||0}));
   cloud.meta={...(cloud.meta||{}),brigade:plan.brigade_name||readShiftPlan().meta?.brigade||'',foreman:plan.foreman_name||''};
  }
  cloud.updatedAt=plan.updated_at||new Date().toISOString();
@@ -331,7 +331,7 @@ async function renderMasterShiftPlans(){
     const factRow=factRows.find(x=>r.rowKey?String(x.rowKey||'')===String(r.rowKey):String(x.productId)===String(r.productId));
     const fact=factEntry?Number(factRow?.factQty)||0:0,vol=Number(p.volume)||0;
     totalPlan+=qty;totalFact+=fact;totalConcrete+=qty*vol;
-    return '<tr><td>'+safeText(p.mark||p.name||r.productLabel||'Виріб')+'</td><td>'+qty+'</td><td>'+(factEntry?fact:'—')+'</td><td>'+Math.max(0,qty-fact)+'</td><td>'+(qty*vol).toFixed(3)+'</td></tr>';
+    return '<tr><td>'+safeText(r.productLabel||p.mark||p.name||'Виріб')+'</td><td>'+qty+'</td><td>'+(factEntry?fact:'—')+'</td><td>'+Math.max(0,qty-fact)+'</td><td>'+(qty*vol).toFixed(3)+'</td></tr>';
    }).join('');
    const factStatus=factEntry
     ?'Факт збережено: '+new Date(factEntry.updated_at||Date.now()).toLocaleString('uk-UA')
