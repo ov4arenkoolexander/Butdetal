@@ -1216,27 +1216,25 @@ function photoCatalogStatus(message,error=false){const el=document.getElementByI
 function compressCatalogPhoto(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onerror=()=>reject(Error('Не вдалося прочитати фото.'));reader.onload=()=>{const img=new Image();img.onerror=()=>reject(Error('Файл не є коректним зображенням.'));img.onload=()=>{const scale=Math.min(1,1800/Math.max(img.width,img.height)),canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(img.width*scale));canvas.height=Math.max(1,Math.round(img.height*scale));const ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,canvas.width,canvas.height);resolve(canvas.toDataURL('image/jpeg',0.86))};img.src=String(reader.result||'')};reader.readAsDataURL(file)})}
 function parsePhotoCatalogText(text){
  const rows=[],seen=new Set();
- // Tesseract often puts each table cell on a separate line. Search the whole
- // recognized text, not individual lines, and accept only known product families.
  const all=String(text||'').replace(/\u00a0/g,' ').replace(/[‐‑‒–—]/g,'-').replace(/\s+/g,' ').trim();
  const patterns=[
   /\b(\d{1,2})\s*ПБ\s*(\d{1,3})\s*[-.]\s*(\d{1,2})(?:\s*([Пп]))?\b/giu,
-  /(?:^|[^\p{L}\p{N}])(ПК)\s*(\d{1,3})\s*[-.]\s*(\d{1,2})\s*[-.]\s*(\d{1,2})([А-ЯІЇЄҐA-Z0-9]{0,5})/giu,
-  /\b(\d{1,2})\s*СМЗ\s*[.-]\s*(\d{1,3})(?:[.-]\s*(\d{1,3})){1,3}/giu,
-  /(\d{1,2})\s*СП\s*(\d{1,3})\s*[-.]\s*(\d{1,2}(?:[,.]\d{1,2})?)\s*[-.]\s*(\d{1,2})(?:\s*([Пп]))?(?=\s|$|[(),])/giu,
-  /(?:^|[^\p{L}\p{N}])(ОПБ)\s*[-.]\s*(\d{1,3})\s*([Тт])?(?=\s|$|[(),])/giu,
-  /(?:^|[^\p{L}\p{N}])(Балка)\s*(Б)\s*[-.]\s*(\d{1,3})(?=\s|$|[(),])/giu
+  /(?:^|[^\p{L}\p{N}])ПК\s*(\d{1,3})\s*[-.]\s*(\d{1,2})\s*[-.]\s*(\d{1,2})([А-ЯІЇЄҐA-Z0-9]{0,5})/giu,
+  /\b(\d{1,2})\s*СМЗ\s*(\d{1,3})\s*[.]\s*(\d{1,3})\s*[.]\s*(\d{1,3})(?:\s*[-.]\s*(\d{1,3}))?/giu,
+  /\b(\d{1,2})\s*СП\s*(\d{1,3})\s*[-.]\s*(\d{1,2}(?:[,.]\d{1,2})?)\s*[-.]\s*(\d{1,2})\s*([ПпНн])?/giu,
+  /(?:^|[^\p{L}\p{N}])ОПБ\s*[-.]\s*(\d{1,3})\s*[-.]\s*(\d{1,3})\s*([Тт])?/giu,
+  /(?:^|[^\p{L}\p{N}])Балка\s*(Б)\s*[-.]\s*(\d{1,3})(?=\s|$|[(),])/giu
  ];
  const add=(mark)=>{mark=mark.replace(/\s+/g,' ').replace(/\s*([.-])\s*/g,'$1').trim();const key=normalizeProductSearch(mark);if(!key||seen.has(key))return;seen.add(key);rows.push({mark,dimensions:'',concreteGrade:'',rebar:'',volume:''});};
  for(const re of patterns){
   let m;while((m=re.exec(all))!==null){
    let mark='';
    if(re===patterns[0])mark=m[1]+' ПБ '+m[2]+'-'+m[3]+(m[4]?'п':'');
-   else if(re===patterns[1])mark='ПК '+m[2]+'-'+m[3]+'-'+m[4]+(m[5]||'');
-   else if(re===patterns[2])mark=m[0];
-   else if(re===patterns[3])mark=m[1]+' СП '+m[2]+'-'+m[3].replace(',','.')+'-'+m[4]+(m[5]?'п':'');
-   else if(re===patterns[4])mark='ОПБ-'+m[2]+(m[3]?'т':'');
-   else mark='Балка Б-'+m[3];
+   else if(re===patterns[1])mark='ПК '+m[1]+'-'+m[2]+'-'+m[3]+(m[4]||'');
+   else if(re===patterns[2])mark=m[1]+'СМЗ '+m[2]+'.'+m[3]+'.'+m[4]+(m[5]?'-'+m[5]:'');
+   else if(re===patterns[3])mark=m[1]+' СП '+m[2]+'-'+m[3].replace(',','.')+'-'+m[4]+(m[5]||'');
+   else if(re===patterns[4])mark='ОПБ-'+m[1]+'-'+m[2]+(m[3]?'т':'');
+   else mark='Балка Б-'+m[2];
    add(mark);
   }
  }
@@ -1247,22 +1245,24 @@ async function recognizePhotoCatalog(){
  if(!file){photoCatalogStatus('Спочатку вибери або сфотографуй документ.',true);return}
  if(!file.type.startsWith('image/')){photoCatalogStatus('Потрібно вибрати файл-зображення.',true);return}
  if(file.size>20*1024*1024){photoCatalogStatus('Фото завелике. Максимальний розмір — 20 МБ.',true);return}
- if(!window.AndroidStorage||typeof AndroidStorage.recognizeImage!=='function'){photoCatalogStatus('Розпізнавання фото доступне після оновлення Android-застосунку.',true);return}
+ 
  photoCatalogStatus('Готую фото. Спочатку пробую Google Cloud Vision…');preview.innerHTML='';apply.classList.add('hidden');
  try{
   const data=await compressCatalogPhoto(file);
-  let cloudText='',localText='',provider='локальний OCR';
+  let cloudText='',localText='',provider='Google Cloud Vision',cloudError='';
   const session=currentButdetalSession(),cfg=getSbConfig();
   if(session?.access_token){
    try{
     const response=await fetch(cfg.url+'/functions/v1/butdetal-document-ocr',{method:'POST',headers:{'Content-Type':'application/json','apikey':cfg.key,'Authorization':'Bearer '+session.access_token},body:JSON.stringify({imageDataUrl:data})});
     const result=await response.json();
-    if(response.ok&&result.text){cloudText=String(result.text);provider='Google Cloud Vision'}
-    else if(result.code!=='VISION_NOT_CONFIGURED')console.warn('Cloud OCR:',result.error||response.status);
-   }catch(e){console.warn('Cloud OCR unavailable:',e)}
+    if(response.ok&&result.text){cloudText=String(result.text)}
+    else{cloudError=String(result.error||('HTTP '+response.status));console.warn('Cloud OCR:',cloudError)}
+   }catch(e){cloudError=String(e?.message||e);console.warn('Cloud OCR unavailable:',e)}
+  }else{cloudError='Немає активної сесії BUTDETAL для хмарного розпізнавання.'}
+  if(!cloudText&&window.AndroidStorage&&typeof AndroidStorage.recognizeImage==='function'){
+   photoCatalogStatus('Хмарний OCR недоступний. Пробую локальне розпізнавання…');
+   try{localText=String(AndroidStorage.recognizeImage(data,'ukr+eng')||'');provider='локальний OCR'}catch(e){console.warn('Local OCR:',e)}
   }
-  if(!cloudText)photoCatalogStatus('Хмарний OCR поки недоступний. Використовую локальне розпізнавання…');
-  localText=String(AndroidStorage.recognizeImage(data,'ukr+eng')||'');
   const cloudRows=cloudText?parsePhotoCatalogText(cloudText):[];
   const localRows=/^(Помилка OCR|OCR не запустився|Текст не знайдено)/i.test(localText)?[]:parsePhotoCatalogText(localText);
   const merged=new Map();
@@ -1270,11 +1270,12 @@ async function recognizePhotoCatalog(){
   photoCatalogPending=[...merged.values()];
   if(!photoCatalogPending.length){
    const detail=cloudText||localText;
-   photoCatalogStatus(detail&&!/^(Помилка OCR|OCR не запустився|Текст не знайдено)/i.test(detail)?'Обидва інструменти прочитали текст, але не знайшли впізнаваних марок виробів. Потрібно покращити виділення таблиці.':'Не вдалося розпізнати текст. Перевір фото або спробуй інший ракурс.',true);return
+   const readable=detail&&!/^(Помилка OCR|OCR не запустився|Текст не знайдено)/i.test(detail);
+   photoCatalogStatus(readable?'Текст прочитано, але марок не знайдено. Перевір, чи є в документі марки ПБ, ПК, СМЗ, СП, ОПБ або Балка.':'Не вдалося розпізнати фото. '+(cloudError||'Спробуй чіткіше фото або інший ракурс.'),true);return
   }
   const products=productRecords();
   photoCatalogPending=photoCatalogPending.map(x=>({...x,duplicate:products.find(p=>normalizeProductSearch(p.mark||p.name)===normalizeProductSearch(x.mark)||String(p.aliases||'').split(/[;,]/).some(a=>normalizeProductSearch(a)===normalizeProductSearch(x.mark)))?.id||''}));
-  preview.innerHTML='<p><b>Знайдено можливих виробів: '+photoCatalogPending.length+'.</b> Познач галочками тільки ті, які потрібно додати. Кількість, ціни та суми з рахунку не переносяться.</p><label style="display:flex;align-items:center;gap:8px;margin:10px 0"><input type="checkbox" id="photoCatalogSelectAll"> <b>Позначити всі</b></label><div style="overflow:auto"><table><thead><tr><th>Додати</th><th>Марка виробу</th><th>Розміри</th><th>Бетон</th><th>Армування</th><th>м³/шт.</th><th>Збіг</th></tr></thead><tbody>'+photoCatalogPending.map((x,i)=>'<tr><td><input type="checkbox" data-photo-select="'+i+'" aria-label="Додати '+safeText(x.mark)+'"></td><td><input data-photo-field="mark" data-photo-index="'+i+'" value="'+safeText(x.mark)+'"></td><td><input data-photo-field="dimensions" data-photo-index="'+i+'" value="'+safeText(x.dimensions)+'"></td><td><input data-photo-field="concreteGrade" data-photo-index="'+i+'" value="'+safeText(x.concreteGrade)+'"></td><td><input data-photo-field="rebar" data-photo-index="'+i+'" value="'+safeText(x.rebar)+'"></td><td><input data-photo-field="volume" data-photo-index="'+i+'" type="number" min="0" step="0.001" value=""></td><td>'+(x.duplicate?'<b style="color:#e9bd52">Дубль</b>':'Нова')+'</td></tr>').join('')+'</tbody></table></div><p class="muted">Перевір характеристики за кресленням. Нерозпізнані поля залишаються порожніми — застосунок їх не вигадує.</p>';
+  preview.innerHTML='<p><b>Знайдено можливих виробів: '+photoCatalogPending.length+'.</b> Познач галочками потрібні рядки. Кількість, ціни та суми з документа не переносяться.</p><label style="display:flex;align-items:center;gap:8px;margin:10px 0"><input type="checkbox" id="photoCatalogSelectAll"> <b>Позначити всі</b></label>'+photoCatalogPending.map((x,i)=>'<article style="border:1px solid #43546a;border-radius:12px;padding:12px;margin:10px 0;background:#172536"><label style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><input type="checkbox" data-photo-select="'+i+'" aria-label="Додати '+safeText(x.mark)+'"><b style="font-size:16px;line-height:1.4;overflow-wrap:anywhere">Виріб '+(i+1)+'</b>'+(x.duplicate?'<span style="margin-left:auto;color:#ffd05a;font-weight:700">Дублікат</span>':'<span style="margin-left:auto;color:#65d99b">Новий</span>')+'</label><label style="display:block;margin:8px 0;font-size:13px">Назва / марка виробу<input data-photo-field="mark" data-photo-index="'+i+'" value="'+safeText(x.mark)+'" style="display:block;width:100%;box-sizing:border-box;min-height:46px;font-size:16px;margin-top:5px"></label><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><label style="font-size:12px">Розміри<input data-photo-field="dimensions" data-photo-index="'+i+'" value="'+safeText(x.dimensions)+'" style="display:block;width:100%;box-sizing:border-box;min-height:42px;margin-top:4px"></label><label style="font-size:12px">Бетон<input data-photo-field="concreteGrade" data-photo-index="'+i+'" value="'+safeText(x.concreteGrade)+'" style="display:block;width:100%;box-sizing:border-box;min-height:42px;margin-top:4px"></label><label style="font-size:12px">Армування<input data-photo-field="rebar" data-photo-index="'+i+'" value="'+safeText(x.rebar)+'" style="display:block;width:100%;box-sizing:border-box;min-height:42px;margin-top:4px"></label><label style="font-size:12px">м³/шт.<input data-photo-field="volume" data-photo-index="'+i+'" type="number" min="0" step="0.001" value="" style="display:block;width:100%;box-sizing:border-box;min-height:42px;margin-top:4px"></label></div></article>').join('')+'<p class="muted">Перевір назви й характеристики за документом. Нерозпізнані поля залишаються порожніми.</p>';
   document.getElementById('photoCatalogSelectAll').addEventListener('change',e=>document.querySelectorAll('[data-photo-select]').forEach(cb=>cb.checked=e.target.checked));
   document.querySelectorAll('[data-photo-select]').forEach(cb=>cb.addEventListener('change',()=>{const all=[...document.querySelectorAll('[data-photo-select]')];document.getElementById('photoCatalogSelectAll').checked=all.length>0&&all.every(x=>x.checked)}));
   apply.classList.remove('hidden');photoCatalogStatus('Розпізнавання завершено ('+provider+'). Знайдено '+photoCatalogPending.length+' марок. Перевір дані перед додаванням.');
