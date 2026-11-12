@@ -112,26 +112,64 @@ function extractProductColumn(result: any): { text: string; found: boolean; reas
     const minY = Math.min(...ys), maxY = Math.max(...ys);
     return { text: String(item.description), minX, maxX, minY, maxY, cx: (minX + maxX) / 2, cy: (minY + maxY) / 2, height: Math.max(1, maxY - minY) };
   }).filter(Boolean) as Array<{text:string;minX:number;maxX:number;minY:number;maxY:number;cx:number;cy:number;height:number}>;
-  const normalize = (value: string) => value.toLocaleLowerCase("uk").replace(/[^\p{L}]/gu, "");
-  const headers = words.filter((word) => normalize(word.text) === "товар");
-  if (!headers.length) return { text: "", found: false, reason: "Не знайдено заголовок «Товар».", bounds: null };
+  const normalize = (value: string) => value.toLocaleLowerCase("uk")
+    .replace(/[aopckxym]/g, (ch) => ({a:"а",o:"о",p:"р",c:"с",k:"к",x:"х",y:"у",m:"м"}[ch] || ch))
+    .replace(/[^\p{L}]/gu, "");
+  const editDistanceAtMostOne = (a: string, b: string) => {
+    if (Math.abs(a.length - b.length) > 1) return false;
+    let i = 0, j = 0, edits = 0;
+    while (i < a.length && j < b.length) {
+      if (a[i] === b[j]) { i++; j++; continue; }
+      if (++edits > 1) return false;
+      if (a.length > b.length) i++;
+      else if (b.length > a.length) j++;
+      else { i++; j++; }
+    }
+    if (i < a.length || j < b.length) edits++;
+    return edits <= 1;
+  };
+  const headers = words.filter((word) => {
+    const value = normalize(word.text);
+    return value === "товар" || (value.length >= 4 && value.length <= 6 && editDistanceAtMostOne(value, "товар"));
+  });
+  if (!headers.length) return { text: "", found: false, reason: "Не знайдено заголовок «Товар» (навіть з урахуванням типової помилки OCR).", bounds: null };
+
+  const likelyMarkPart = (value: string) => {
+    const v = value.replace(/[‐‑‒–—]/g, "-").replace(/[()[\],;:]/g, "");
+    return /^(?:\d{1,2}[А-ЯІЇЄҐA-Z]{1,8}|[А-ЯІЇЄҐA-Z]{1,8}|\d{1,4}(?:[-.]\d{1,4}){1,3})(?:[А-ЯІЇЄҐA-Z]{0,4}\d{0,2})?$/iu.test(v);
+  };
 
   for (const header of headers) {
     const rowTolerance = Math.max(10, header.height * 0.85);
-    const sameHeaderRow = words.filter((word) =>
-      word !== header && Math.abs(word.cy - header.cy) <= rowTolerance
-    );
+    const sameHeaderRow = words.filter((word) => word !== header && Math.abs(word.cy - header.cy) <= rowTolerance);
     const leftHeaders = sameHeaderRow.filter((word) => word.cx < header.cx).sort((a,b) => b.cx-a.cx);
     const rightHeaders = sameHeaderRow.filter((word) => word.cx > header.cx).sort((a,b) => a.cx-b.cx);
+    const leftNeighbor = leftHeaders[0] || null;
+    const rightNeighbor = rightHeaders[0] || null;
 
-    // Fail closed: without a neighboring header on BOTH sides, the column
-    // boundary is ambiguous and we must not collect text from the whole page.
-    if (!leftHeaders.length || !rightHeaders.length) continue;
+    let left = leftNeighbor ? (leftNeighbor.maxX + header.minX) / 2 : NaN;
+    let right = rightNeighbor ? (header.maxX + rightNeighbor.minX) / 2 : NaN;
+    let method = "межі за сусідніми заголовками";
 
-    const left = (leftHeaders[0].maxX + header.minX) / 2;
-    const right = (header.maxX + rightHeaders[0].minX) / 2;
+    // Якщо OCR пропустив один із сусідніх заголовків, звужуємо пошук
+    // тільки до фрагментів рядків, схожих на марку виробу. Не беремо всю сторінку.
+    if (!leftNeighbor || !rightNeighbor) {
+      const searchRadius = Math.max(header.height * 16, (header.maxX - header.minX) * 7);
+      const below = words.filter((word) =>
+        word.cy > header.maxY &&
+        word.cy < header.maxY + Math.max(header.height * 45, 900) &&
+        Math.abs(word.cx - header.cx) <= searchRadius &&
+        likelyMarkPart(word.text)
+      );
+      if (!below.length) continue;
+      const pad = Math.max(3, header.height * 0.65);
+      if (!leftNeighbor) left = Math.min(...below.map((word) => word.minX)) - pad;
+      if (!rightNeighbor) right = Math.max(...below.map((word) => word.maxX)) + pad;
+      method = "межі за заголовком і вирівняними фрагментами марок";
+    }
+
     const columnWidth = right - left;
-    if (!Number.isFinite(columnWidth) || columnWidth < Math.max(header.height * 2.2, (header.maxX-header.minX) * 1.8)) continue;
+    if (!Number.isFinite(columnWidth) || columnWidth < Math.max(header.height * 1.8, (header.maxX-header.minX) * 1.25)) continue;
 
     const cells = words.filter((word) =>
       word.cy > header.maxY &&
@@ -146,19 +184,14 @@ function extractProductColumn(result: any): { text: string; found: boolean; reas
     const rows: Array<{ y:number; words: typeof cells }> = [];
     for (const word of cells) {
       let row = rows.find((candidate) => Math.abs(candidate.y - word.cy) <= textRowTolerance);
-      if (!row) {
-        row = { y: word.cy, words: [] };
-        rows.push(row);
-      }
+      if (!row) { row = { y: word.cy, words: [] }; rows.push(row); }
       row.words.push(word);
       row.y = row.words.reduce((sum, item) => sum + item.cy, 0) / row.words.length;
     }
-
     const orderedRows = rows.sort((a,b) => a.y-b.y);
     const text = orderedRows
       .map((row) => row.words.sort((a,b) => a.minX-b.minX).map((word) => word.text).join(" ").trim())
-      .filter(Boolean)
-      .join("\n");
+      .filter(Boolean).join("\n");
     if (!text) continue;
 
     const maxBottom = Math.max(...cells.map((word) => word.maxY));
@@ -166,18 +199,19 @@ function extractProductColumn(result: any): { text: string; found: boolean; reas
     return {
       text,
       found: true,
-      reason: "Межі колонки підтверджені сусідніми заголовками.",
+      reason: method === "межі за сусідніми заголовками"
+        ? "Межі колонки підтверджені сусідніми заголовками."
+        : "Колонку попередньо виділено за заголовком і розташуванням фрагментів марок. Перевір результат перед імпортом.",
       bounds: { left, top: header.minY, right, bottom: maxBottom, normalized },
     };
   }
   return {
     text: "",
     found: false,
-    reason: "Знайдено слово «Товар», але не вдалося надійно підтвердити межі колонки за сусідніми заголовками. Перевір фото: заголовки сусідніх колонок мають бути видимі.",
+    reason: "Заголовок «Товар» знайдено, але межі колонки не підтверджені. Щоб не захопити кількість або ціну, імпорт зупинено.",
     bounds: null,
   };
 }
-
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
