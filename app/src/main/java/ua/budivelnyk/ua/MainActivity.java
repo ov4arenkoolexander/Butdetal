@@ -200,13 +200,11 @@ public class MainActivity extends Activity {
         int width=source.getWidth(), height=source.getHeight();
         int count=width*height;
         int[] pixels=new int[count];
-        int[] gray=new int[count];
         int[] histogram=new int[256];
         source.getPixels(pixels,0,width,0,0,width,height);
         for(int i=0;i<count;i++) {
             int color=pixels[i];
             int value=(((color>>16)&255)*299+((color>>8)&255)*587+(color&255)*114)/1000;
-            gray[i]=value;
             histogram[value]++;
         }
         int lowTarget=(int)(count*0.02f), highTarget=(int)(count*0.98f);
@@ -217,7 +215,9 @@ public class MainActivity extends Activity {
         if(high-low<32) { low=0; high=255; }
         int range=Math.max(1,high-low);
         for(int i=0;i<count;i++) {
-            int value=Math.max(0,Math.min(255,(gray[i]-low)*255/range));
+            int color=pixels[i];
+            int gray=(((color>>16)&255)*299+((color>>8)&255)*587+(color&255)*114)/1000;
+            int value=Math.max(0,Math.min(255,(gray-low)*255/range));
             pixels[i]=android.graphics.Color.rgb(value,value,value);
         }
         Bitmap enhanced=Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888);
