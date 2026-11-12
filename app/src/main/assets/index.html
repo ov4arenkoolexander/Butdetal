@@ -1280,7 +1280,8 @@ async function recognizePhotoCatalog(){
    photoCatalogStatus('Хмарний OCR недоступний. Локальне розпізнавання не може надійно відокремити колонку «Товар», тому не додаю назви з інших колонок.');
    try{localText=String(AndroidStorage.recognizeImage(data,'ukr+eng')||'')}catch(e){console.warn('Local OCR:',e)}
   }
-  if(productColumnText&&columnBounds)photoCatalogColumnPreviewHtml=await makePhotoCatalogColumnPreview(data,columnBounds);\n  const columnRows=productColumnText?parsePhotoCatalogText(productColumnText):[];
+  if(productColumnText&&columnBounds)photoCatalogColumnPreviewHtml=await makePhotoCatalogColumnPreview(data,columnBounds);
+  const columnRows=productColumnText?parsePhotoCatalogText(productColumnText):[];
   photoCatalogPending=columnRows;
   if(!photoCatalogPending.length){
    if(productColumnText.trim()){
