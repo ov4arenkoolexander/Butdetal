@@ -1268,8 +1268,11 @@ async function recognizePhotoCatalog(){
 }
 async function applyPhotoCatalogImport(){
  if(!photoCatalogPending.length)return;
+ const selectedCount=photoCatalogPending.filter((_,i)=>document.querySelector('[data-photo-select="'+i+'"]')?.checked).length;
+ if(!selectedCount){photoCatalogStatus('Постав хоча б одну галочку біля виробу, який потрібно додати.',true);return}
  const products=productRecords();let added=0,replaced=0,skipped=0;
  for(let i=0;i<photoCatalogPending.length;i++){
+  if(!document.querySelector('[data-photo-select="'+i+'"]')?.checked)continue;
   const get=k=>document.querySelector('[data-photo-field="'+k+'"][data-photo-index="'+i+'"]')?.value?.trim()||'';
   const mark=get('mark');if(!mark)continue;
   const item={mark,name:mark,dimensions:get('dimensions'),concreteGrade:get('concreteGrade'),rebar:get('rebar'),volume:get('volume'),notes:'Розпізнано з фото. Перевірити за кресленням.',updated:new Date().toISOString()};
