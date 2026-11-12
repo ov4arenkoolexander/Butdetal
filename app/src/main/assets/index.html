@@ -1229,7 +1229,7 @@ function parsePhotoCatalogText(text){
  ];
  // Загальний пошук марок, навіть якщо їх ще немає в каталозі.
  // На цьому етапі текст уже має бути відокремлений від інших колонок.
- const genericPattern=/(?:^|[^\\p{L}\\p{N}])((?:\\d{1,2}\\s*[А-ЯІЇЄҐA-Z]{1,8}\\s*\\d{1,4}|[А-ЯІЇЄҐA-Z]{1,8}\\s*[-.]?\\s*\\d{1,4}(?:\\s*[-.]\\s*\\d{1,4})+)(?:[А-ЯІЇЄҐA-Z]{1,6}\\d{0,3})?)(?=$|[^\\p{L}\\p{N}])/giu;
+ const genericPattern=/(?:^|[^\\p{L}\\p{N}])((?:\\d{1,2}\\s*[А-ЯІЇЄҐA-Z]{1,8}\\s*\\d{1,4}(?:\\s*[-.]\\s*\\d{1,4})+|[А-ЯІЇЄҐA-Z]{1,8}\\s*[-.]?\\s*\\d{1,4}(?:\\s*[-.]\\s*\\d{1,4})+)(?:[А-ЯІЇЄҐA-Z]{1,6}\\d{0,3})?)(?=$|[^\\p{L}\\p{N}])/giu;
  const add=(mark)=>{mark=mark.replace(/\s+/g,' ').replace(/\s*([.-])\s*/g,'$1').trim();const key=normalizeProductSearch(mark);if(!key||seen.has(key))return;seen.add(key);rows.push({mark,dimensions:'',concreteGrade:'',rebar:'',volume:''});};
  for(const re of patterns){
   let m;while((m=re.exec(all))!==null){
