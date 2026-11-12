@@ -1219,7 +1219,7 @@ function parsePhotoCatalogText(text){
  const markRe=/(?:\d{1,2}\s*)?(?:[А-ЯІЇЄҐA-Z]{2,8}\s*[-.]?\s*\d{1,4}(?:[.,-]\d{1,4}){0,3}[А-ЯІЇЄҐA-Z0-9]{0,6}|[А-ЯІЇЄҐA-Z]\s*[-.]\s*\d{1,4}[А-ЯІЇЄҐA-Z0-9]{0,4})/giu;
  for(const line of lines){
   const clean=line.replace(/\s+/g,' ').trim();if(!clean)continue;
-  const searchable=clean.replace(/\b\d+\s*шт\.?\b.*$/iu,' ').replace(/\b\d{3,5}\s*[×xх*]\s*\d{2,5}(?:\s*[×xх*]\s*\d{2,4})?\b/giu,' ');const matches=searchable.match(markRe)||[];
+  const searchable=clean.replace(/\d+\s*шт\.?.*$/iu,' ').replace(/\b\d{3,5}\s*[×xх*]\s*\d{2,5}(?:\s*[×xх*]\s*\d{2,4})?\b/giu,' ');const matches=searchable.match(markRe)||[];
   for(const raw of matches){
    const mark=raw.replace(/\s+/g,' ').replace(/[.,;:]+$/,'').trim(),key=normalizeProductSearch(mark);
    if(!key||seen.has(key)||key.length<3)continue;
