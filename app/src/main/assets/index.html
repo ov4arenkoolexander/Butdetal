@@ -102,7 +102,7 @@ footer{text-align:center;color:#8390a0;font-size:12px;padding:24px}
 <div class="card"><h2>📊 Excel — імпорт та експорт</h2><p class="muted">Працює офлайн. Книга Excel містить чотири аркуші: Каталог, Нормативи, Формули та Таблиці.</p><p class="muted">Обери, які розділи включити у файл для друку або передачі.</p>
 <div class="excel-select"><label><input type="checkbox" class="excel-sheet-choice" value="Каталог" checked> Каталог виробів</label><label><input type="checkbox" class="excel-sheet-choice" value="Нормативи" checked> Нормативи</label><label><input type="checkbox" class="excel-sheet-choice" value="Формули" checked> Формули</label><label><input type="checkbox" class="excel-sheet-choice" value="Таблиці" checked> Таблиці</label></div>
 <button class="btn secondary" onclick="exportSelectedExcel()">⬇ Експортувати вибране в Excel</button><div id="excelExportStatus" class="muted" aria-live="polite"></div><label>Імпорт книги Excel (.xlsx)</label><input id="excelFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"><button class="btn" onclick="previewButdetalExcel()">Перевірити файл та показати попередній перегляд</button><div id="excelPreview" class="muted" aria-live="polite"></div><div id="excelActions" class="hidden"><button class="btn" onclick="applyButdetalExcel(true)">Оновити дублікати та додати нові</button><button class="btn secondary" onclick="applyButdetalExcel(false)">Пропустити дублікати, додати лише нові</button></div><button class="btn secondary" onclick="downloadExcelTemplate()">Завантажити порожній шаблон Excel</button></div>
-<div class="card"><h2>📷 Додати вироби з фото</h2><p class="muted">Завантаж фото рахунку, накладної або таблиці. BUTDETAL розпізнає текст локально на телефоні. Фото не надсилається до платних OCR-сервісів. Кількість із документа не переноситься. Кількість із документа не переноситься. Перед збереженням можна перевірити та відредагувати кожен рядок.</p><label for="photoCatalogFile">Фото документа</label><input id="photoCatalogFile" type="file" accept="image/*" capture="environment"><button class="btn" type="button" onclick="recognizePhotoCatalog()">Розпізнати фото</button><div id="photoCatalogStatus" class="muted" aria-live="polite"></div><div id="photoCatalogPreview"></div><button id="photoCatalogApply" class="btn hidden" type="button" onclick="applyPhotoCatalogImport()">Додати до каталогу</button></div><div class="card"><h2>📚 Синхронізація серій</h2><p class="muted">Обмін папками типових серій із серверним архівом.</p><div id="syncSeriesStatus" class="sync-line">Очікує синхронізації серій</div><button class="btn" onclick="syncSeriesCatalog()">⟳ Синхронізувати серії із сервером</button></div>
+<div class="card"><h2>📷 Додати вироби з фото</h2><p class="muted">Завантаж фото рахунку, накладної або таблиці. BUTDETAL розпізнає текст локально на телефоні. Фото не надсилається до платних OCR-сервісів. Кількість із документа не переноситься. Кількість із документа не переноситься. Перед збереженням можна перевірити та відредагувати кожен рядок.</p><label for="photoCatalogFile">Фото документа</label><input id="photoCatalogFile" type="file" accept="image/*"><button class="btn" type="button" onclick="preparePhotoCatalogCrop()">Відкрити фото та виділити колонку</button><div id="photoCatalogStatus" class="muted" aria-live="polite"></div><div id="photoCatalogPreview"></div><button id="photoCatalogApply" class="btn hidden" type="button" onclick="applyPhotoCatalogImport()">Додати до каталогу</button></div><div class="card"><h2>📚 Синхронізація серій</h2><p class="muted">Обмін папками типових серій із серверним архівом.</p><div id="syncSeriesStatus" class="sync-line">Очікує синхронізації серій</div><button class="btn" onclick="syncSeriesCatalog()">⟳ Синхронізувати серії із сервером</button></div>
 </section>
 <section id="catalog" class="page hidden">
 <div class="card catalog-home"><div class="section-heading"><div><span class="eyebrow">ОБЛІК ВИРОБІВ</span><h2>Каталог виробів</h2></div><span class="section-symbol">▤</span></div><p class="muted">Безкоштовний пошук за назвою, маркою виробу або каркаса, серією, номером креслення, розмірами та примітками. Результати потрібно перевіряти за кресленням.</p><div class="card" style="margin:12px 0;background:#182536"><h3 style="margin-top:0">🔎 Підібрати каркас за виробом</h3><p class="muted">Введи назву або марку виробу. Підбір шукає у збережених картках BUTDETAL та ранжує збіги; це не підтвердження проєктної сумісності.</p><input id="cageMatchQuery" placeholder="Наприклад: плита перекриття ПК 60-12-8"><button type="button" class="btn" onclick="findCageCandidates()">Знайти каркас</button><div id="cageMatchResults" aria-live="polite"></div></div><input id="productSearch" class="search" placeholder="Марка виробу / каркаса / серія / креслення / розміри" oninput="renderProductCatalog()"><label for="productSeriesFilter">Тип серійності</label><select id="productSeriesFilter" onchange="renderProductCatalog()"><option value="all">Усі вироби</option><option value="serial">Серійні</option><option value="nonserial">Несерійні</option><option value="unset">Не вказано</option></select><button class="btn" onclick="newProductCard()">＋ Додати виріб до каталогу</button><button type="button" class="btn secondary" onclick="requestProtectedClear('products')">Очистити каталог 🔒</button><div id="productCatalog"></div></div>
@@ -1270,27 +1270,61 @@ function renderPhotoCatalogCandidates(preview,apply,provider){
  document.querySelectorAll('[data-photo-select]').forEach(cb=>cb.addEventListener('change',()=>{const all=[...document.querySelectorAll('[data-photo-select]')];document.getElementById('photoCatalogSelectAll').checked=all.length>0&&all.every(x=>x.checked)}));
  apply.classList.remove('hidden');photoCatalogStatus('Розпізнавання завершено ('+provider+'). Знайдено '+photoCatalogPending.length+' марок. Перевір дані перед додаванням.');preview.scrollIntoView({behavior:'smooth',block:'start'});
 }
-async function recognizePhotoCatalog(){
+let photoCatalogSourceData='';
+let photoCatalogCrop=null;
+function preparePhotoCatalogCrop(){
  const file=document.getElementById('photoCatalogFile')?.files?.[0],preview=document.getElementById('photoCatalogPreview'),apply=document.getElementById('photoCatalogApply');
- if(!file){photoCatalogStatus('Спочатку вибери або сфотографуй документ.',true);return}
+ if(!file){photoCatalogStatus('Спочатку вибери фото документа.',true);return}
  if(!file.type.startsWith('image/')){photoCatalogStatus('Потрібно вибрати файл-зображення.',true);return}
  if(file.size>20*1024*1024){photoCatalogStatus('Фото завелике. Максимальний розмір — 20 МБ.',true);return}
- preview.innerHTML='';apply.classList.add('hidden');photoCatalogColumnPreviewHtml='';photoCatalogPending=[];
- if(!window.AndroidStorage||typeof AndroidStorage.recognizeImage!=='function'){
-  photoCatalogStatus('Локальний OCR недоступний у цій версії застосунку. Онови BUTDETAL.',true);return
- }
- try{
-  photoCatalogStatus('Розпізнаю документ безпосередньо на телефоні. Це може зайняти трохи часу…');
-  const data=await compressCatalogPhoto(file);
-  const localText=String(AndroidStorage.recognizeImage(data,'ukr+rus')||'').trim();
-  if(!localText||/^((помилка|ocr не запустився|текст не знайдено))/i.test(localText)){
-   photoCatalogStatus(localText||'Не вдалося розпізнати текст. Спробуй чіткіше фото.',true);return
-  }
-  preview.innerHTML='<div class="card" style="margin-top:12px"><b>Текст із документа (покращений локальний OCR)</b><p class="muted">Фото обробляється у вищій роздільності; Tesseract перевіряє оригінал і покращений контраст у кількох режимах розмітки. Розпізнавання виконується на телефоні без Google Cloud Vision і без платного API. Щоб не захопити кількість, ціну чи розміри, залиш у полі нижче лише вміст колонки «Товар». Потім натисни кнопку пошуку марок.</p><textarea id="photoCatalogRawText" rows="12" style="width:100%;box-sizing:border-box;font-size:15px;line-height:1.5;white-space:pre-wrap">'+safeText(localText)+'</textarea><button class="btn secondary" type="button" onclick="retryPhotoCatalogParsing()">Знайти вироби у виділеному тексті</button></div>';
-  photoCatalogStatus('Текст розпізнано локально. Перевір його та залиш лише колонку «Товар».');
+ preview.innerHTML='';apply.classList.add('hidden');photoCatalogColumnPreviewHtml='';photoCatalogPending=[];photoCatalogCrop=null;
+ compressCatalogPhoto(file).then(data=>{
+  photoCatalogSourceData=data;
+  preview.innerHTML='<div class="card" style="margin-top:12px"><b>Виділи колонку «Товар»</b><p class="muted">Проведи пальцем по фото від верхнього лівого до нижнього правого краю потрібної колонки. Захоплюй усі рядки з марками, але не сусідні колонки.</p><div id="photoCatalogCropFrame" style="position:relative;width:100%;max-height:65vh;overflow:hidden;background:#101a27;border-radius:10px;touch-action:none"><img id="photoCatalogCropImage" src="'+data+'" alt="Фото документа для виділення" style="display:block;width:100%;max-height:65vh;object-fit:contain;user-select:none;-webkit-user-drag:none"><canvas id="photoCatalogCropCanvas" style="position:absolute;inset:0;width:100%;height:100%;touch-action:none"></canvas></div><p id="photoCatalogCropHint" class="muted">Обведи прямокутником колонку з найменуваннями виробів.</p><button class="btn" type="button" onclick="recognizeSelectedPhotoCatalogColumn()">Розпізнати виділену колонку</button><button class="btn secondary" type="button" onclick="recognizeWholePhotoCatalog()">Розпізнати все фото</button></div>';
+  const img=document.getElementById('photoCatalogCropImage'),canvas=document.getElementById('photoCatalogCropCanvas');
+  const init=()=>{canvas.width=img.clientWidth;canvas.height=img.clientHeight;canvas.style.width=img.clientWidth+'px';canvas.style.height=img.clientHeight+'px';};
+  if(img.complete)init();else img.onload=init;
+  let active=false,from=null,current=null;
+  const point=e=>{const r=canvas.getBoundingClientRect();return{x:Math.max(0,Math.min(canvas.width,e.clientX-r.left)),y:Math.max(0,Math.min(canvas.height,e.clientY-r.top))}};
+  const paint=()=>{const c=canvas.getContext('2d');c.clearRect(0,0,canvas.width,canvas.height);if(!from||!current)return;const x=Math.min(from.x,current.x),y=Math.min(from.y,current.y),w=Math.abs(current.x-from.x),h=Math.abs(current.y-from.y);c.fillStyle='rgba(49,166,255,.18)';c.fillRect(x,y,w,h);c.strokeStyle='#39a9ff';c.lineWidth=3;c.strokeRect(x,y,w,h)};
+  canvas.onpointerdown=e=>{active=true;from=point(e);current=from;canvas.setPointerCapture(e.pointerId);paint()};
+  canvas.onpointermove=e=>{if(!active)return;current=point(e);paint()};
+  canvas.onpointerup=e=>{if(!active)return;active=false;current=point(e);paint();const w=Math.abs(current.x-from.x),h=Math.abs(current.y-from.y);if(w>12&&h>12){photoCatalogCrop={left:Math.min(from.x,current.x)/canvas.width,top:Math.min(from.y,current.y)/canvas.height,right:Math.max(from.x,current.x)/canvas.width,bottom:Math.max(from.y,current.y)/canvas.height};document.getElementById('photoCatalogCropHint').textContent='Область виділено. Перевір, чи в неї потрапила лише колонка «Товар».'}else{photoCatalogCrop=null;document.getElementById('photoCatalogCropHint').textContent='Область замала. Виділи колонку більшим прямокутником.'}};
+  photoCatalogStatus('Фото готове. Виділи потрібну колонку пальцем.');
   preview.scrollIntoView({behavior:'smooth',block:'start'});
+ }).catch(e=>photoCatalogStatus('Не вдалося підготувати фото: '+(e.message||e),true));
+}
+function cropPhotoCatalogData(){
+ if(!photoCatalogCrop||!photoCatalogSourceData)return '';
+ const img=document.getElementById('photoCatalogCropImage');if(!img)return '';
+ const left=Math.max(0,Math.floor(photoCatalogCrop.left*img.naturalWidth)),top=Math.max(0,Math.floor(photoCatalogCrop.top*img.naturalHeight));
+ const right=Math.min(img.naturalWidth,Math.ceil(photoCatalogCrop.right*img.naturalWidth)),bottom=Math.min(img.naturalHeight,Math.ceil(photoCatalogCrop.bottom*img.naturalHeight));
+ const w=right-left,h=bottom-top;if(w<20||h<20)return '';
+ const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+ const ctx=canvas.getContext('2d',{alpha:false});ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);ctx.drawImage(img,left,top,w,h,0,0,w,h);
+ return canvas.toDataURL('image/jpeg',0.96);
+}
+function runPhotoCatalogOcr(data,provider){
+ const preview=document.getElementById('photoCatalogPreview');
+ if(!window.AndroidStorage||typeof AndroidStorage.recognizeImage!=='function'){photoCatalogStatus('Локальний OCR недоступний у цій версії застосунку. Онови BUTDETAL.',true);return}
+ try{
+  photoCatalogStatus('Розпізнаю виділений фрагмент на телефоні…');
+  const localText=String(AndroidStorage.recognizeImage(data,'ukr+rus')||'').trim();
+  if(!localText||/^((помилка|ocr не запустився|текст не знайдено))/i.test(localText)){photoCatalogStatus(localText||'Не вдалося розпізнати текст. Спробуй чіткіше фото.',true);return}
+  preview.innerHTML='<div class="card" style="margin-top:12px"><b>Текст із документа ('+provider+')</b><p class="muted">OCR обробив лише вибраний фрагмент. Перевір результат; за потреби видали зайве або виправ символи. Автоматична заміна латинських і кириличних літер не виконується.</p><textarea id="photoCatalogRawText" rows="12" style="width:100%;box-sizing:border-box;font-size:15px;line-height:1.5;white-space:pre-wrap">'+safeText(localText)+'</textarea><button class="btn secondary" type="button" onclick="retryPhotoCatalogParsing()">Знайти вироби у виділеному тексті</button></div>';
+  photoCatalogColumnPreviewHtml='';
+  preview.scrollIntoView({behavior:'smooth',block:'start'});
+  photoCatalogStatus('Текст розпізнано. Перевір його та натисни «Знайти вироби».');
  }catch(e){photoCatalogStatus('Локальне розпізнавання не вдалося: '+(e.message||e),true)}
 }
+function recognizeSelectedPhotoCatalogColumn(){
+ const data=cropPhotoCatalogData();if(!data){photoCatalogStatus('Спочатку виділи прямокутником колонку на фото.',true);return}
+ const crop=photoCatalogCrop,preview=document.getElementById('photoCatalogPreview');
+ photoCatalogColumnPreviewHtml='<div class="card" style="margin:10px 0"><b>Виділена область для OCR</b><img src="'+data+'" alt="Виділена колонка" style="display:block;max-width:100%;max-height:360px;object-fit:contain;margin:8px auto;border-radius:8px"></div>';
+ runPhotoCatalogOcr(data,'виділена колонка «Товар»');
+}
+function recognizeWholePhotoCatalog(){if(!photoCatalogSourceData){photoCatalogStatus('Спочатку відкрий фото.',true);return}photoCatalogColumnPreviewHtml='';runPhotoCatalogOcr(photoCatalogSourceData,'усе фото')}
+
 async function applyPhotoCatalogImport(){
  if(!photoCatalogPending.length)return;
  const selectedCount=photoCatalogPending.filter((_,i)=>document.querySelector('[data-photo-select="'+i+'"]')?.checked).length;
