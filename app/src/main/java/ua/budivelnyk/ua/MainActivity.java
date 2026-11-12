@@ -161,7 +161,8 @@ public class MainActivity extends Activity {
 
     private String recognizeBitmap(Bitmap bitmap) throws Exception {
         File base=ensureTessdata();
-        String[] languageModes={"ukr+rus+eng","ukr","rus","eng"};
+        // Кириличні моделі без англійської, щоб не змішувати алфавіти.
+        String[] languageModes={"ukr+rus","ukr"};
         Exception lastError=null;
         for(String languageMode:languageModes) {
             TessBaseAPI api=new TessBaseAPI();
@@ -173,7 +174,9 @@ public class MainActivity extends Activity {
                     lastError=new IOException("Tesseract init повернув false для мов: "+languageMode);
                     continue;
                 }
-                api.setPageSegMode(TessBaseAPI.PageSegMode.PSM_AUTO);
+                api.setPageSegMode(TessBaseAPI.PageSegMode.PSM_SINGLE_COLUMN);
+                api.setVariable("tessedit_char_whitelist",
+                    "0123456789АБВГҐДЕЄЖЗИІЇЙКЛМНОПРСТУФХЦЧШЩЬЮЯабвгґдеєжзиіїйклмнопрстуфхцчшщьюя.,-()/×х ");
                 api.setImage(bitmap);
                 String result=api.getUTF8Text();
                 return result==null?"":result.trim();
@@ -186,14 +189,8 @@ public class MainActivity extends Activity {
                 }
             }
         }
-        // Fallback to ML Kit when Tesseract language data cannot initialize.
-        try {
-            return recognizeWithMlKit(bitmap);
-        } catch(Exception mlError) {
-            String detail=lastError==null?"невідома помилка":lastError.getMessage();
-            throw new IOException("Tesseract не завантажив мовні моделі: "+detail+
-                ". ML Kit OCR також завершився помилкою: "+mlError.getMessage(),mlError);
-        }
+        String detail=lastError==null?"невідома помилка":lastError.getMessage();
+        throw new IOException("Не вдалося запустити кириличний OCR Tesseract: "+detail);
     }
 
     private String recognizeWithMlKit(Bitmap bitmap) throws Exception {
