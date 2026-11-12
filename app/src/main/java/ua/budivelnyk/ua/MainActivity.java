@@ -196,44 +196,111 @@ public class MainActivity extends Activity {
         return text == null ? "" : text.trim();
     }
 
+    private Bitmap createOcrEnhancedBitmap(Bitmap source) {
+        int width=source.getWidth(), height=source.getHeight();
+        int count=width*height;
+        int[] pixels=new int[count];
+        int[] gray=new int[count];
+        int[] histogram=new int[256];
+        source.getPixels(pixels,0,width,0,0,width,height);
+        for(int i=0;i<count;i++) {
+            int color=pixels[i];
+            int value=(((color>>16)&255)*299+((color>>8)&255)*587+(color&255)*114)/1000;
+            gray[i]=value;
+            histogram[value]++;
+        }
+        int lowTarget=(int)(count*0.02f), highTarget=(int)(count*0.98f);
+        int cumulative=0, low=0, high=255;
+        for(int i=0;i<256;i++) { cumulative+=histogram[i]; if(cumulative>=lowTarget) { low=i; break; } }
+        cumulative=0;
+        for(int i=0;i<256;i++) { cumulative+=histogram[i]; if(cumulative>=highTarget) { high=i; break; } }
+        if(high-low<32) { low=0; high=255; }
+        int range=Math.max(1,high-low);
+        for(int i=0;i<count;i++) {
+            int value=Math.max(0,Math.min(255,(gray[i]-low)*255/range));
+            pixels[i]=android.graphics.Color.rgb(value,value,value);
+        }
+        Bitmap enhanced=Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888);
+        enhanced.setPixels(pixels,0,width,0,0,width,height);
+        return enhanced;
+    }
+
     private String recognizeBitmap(Bitmap bitmap) throws Exception {
         File base=ensureTessdata();
         File data=new File(base,"tessdata");
         File ukrainianModel=new File(data,"ukr.traineddata");
         String modelInfo="ukr="+ukrainianModel.length()+" байт, існує="+ukrainianModel.isFile()
             +", datapath="+base.getAbsolutePath();
-        // Спочатку запускаємо лише українську модель: це виключає помилку через rus.traineddata.
-        String[] languageModes={"ukr","ukr+rus"};
+        String[] languageModes={"ukr","ukr+eng","ukr+rus+eng"};
         String[] dataPaths={base.getAbsolutePath()+File.separator,base.getAbsolutePath(),data.getAbsolutePath()+File.separator};
+        int[] pageModes={TessBaseAPI.PageSegMode.PSM_AUTO,TessBaseAPI.PageSegMode.PSM_SINGLE_COLUMN,
+            TessBaseAPI.PageSegMode.PSM_SINGLE_BLOCK,TessBaseAPI.PageSegMode.PSM_SPARSE_TEXT};
+        String whitelist="0123456789АБВГҐДЕЄЖЗИІЇЙКЛМНОПРСТУФХЦЧШЩЬЮЯабвгґдеєжзиіїйклмнопрстуфхцчшщьюя"
+            +"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.,:;-/()×хХ ";
         Exception lastError=null;
         String lastAttempt="";
-        for(String languageMode:languageModes) {
-            for(String dataPath:dataPaths) {
-                TessBaseAPI api=new TessBaseAPI();
-                boolean initialized=false;
-                try {
-                    lastAttempt="мови="+languageMode+", шлях="+dataPath;
-                    initialized=api.init(dataPath,languageMode,TessBaseAPI.OEM_LSTM_ONLY);
-                    if(!initialized) {
-                        lastError=new IOException("Tesseract init повернув false ("+lastAttempt+")");
-                        continue;
+        String bestText="";
+        int bestScore=-1, bestConfidence=0;
+        boolean initializedAny=false;
+        Bitmap enhanced=createOcrEnhancedBitmap(bitmap);
+        try {
+            Bitmap[] variants={bitmap,enhanced};
+            for(String languageMode:languageModes) {
+                boolean modeInitialized=false;
+                for(String dataPath:dataPaths) {
+                    TessBaseAPI api=new TessBaseAPI();
+                    boolean initialized=false;
+                    try {
+                        lastAttempt="мови="+languageMode+", шлях="+dataPath;
+                        initialized=api.init(dataPath,languageMode,TessBaseAPI.OEM_LSTM_ONLY);
+                        if(!initialized) {
+                            lastError=new IOException("Tesseract init повернув false ("+lastAttempt+")");
+                            continue;
+                        }
+                        initializedAny=true;
+                        modeInitialized=true;
+                        api.setVariable("tessedit_char_whitelist",whitelist);
+                        api.setVariable("preserve_interword_spaces","1");
+                        for(Bitmap variant:variants) {
+                            for(int pageMode:pageModes) {
+                                api.setPageSegMode(pageMode);
+                                api.setImage(variant);
+                                String candidate=api.getUTF8Text();
+                                if(candidate==null) candidate="";
+                                candidate=candidate.trim();
+                                if(candidate.isEmpty()) continue;
+                                int confidence=api.meanConfidence();
+                                int useful=0;
+                                for(int i=0;i<candidate.length();i++) {
+                                    char ch=candidate.charAt(i);
+                                    if(Character.isLetterOrDigit(ch)) useful++;
+                                }
+                                int score=confidence*1000+Math.min(useful,999);
+                                if(score>bestScore) {
+                                    bestScore=score;
+                                    bestConfidence=confidence;
+                                    bestText=candidate;
+                                }
+                            }
+                        }
+                    } catch(Exception e) {
+                        lastError=e;
+                    } finally {
+                        if(initialized) {
+                            try { api.clear(); } catch(Exception ignored) {}
+                        }
+                        try { api.recycle(); } catch(Exception ignored) {}
                     }
-                    api.setPageSegMode(TessBaseAPI.PageSegMode.PSM_SINGLE_COLUMN);
-                    api.setVariable("tessedit_char_whitelist",
-                        "0123456789АБВГҐДЕЄЖЗИІЇЙКЛМНОПРСТУФХЦЧШЩЬЮЯабвгґдеєжзиіїйклмнопрстуфхцчшщьюя.,-()/×х ");
-                    api.setImage(bitmap);
-                    String result=api.getUTF8Text();
-                    return result==null?"":result.trim();
-                } catch(Exception e) {
-                    lastError=e;
-                } finally {
-                    if(initialized) {
-                        try { api.clear(); } catch(Exception ignored) {}
-                    }
-                    try { api.recycle(); } catch(Exception ignored) {}
+                    if(modeInitialized) break;
                 }
+                // Якщо українська модель дала якісний результат, не витрачаємо час на зайві моделі.
+                if(bestConfidence>=82) break;
             }
+        } finally {
+            if(enhanced!=null&&!enhanced.isRecycled()) enhanced.recycle();
         }
+        if(!bestText.isEmpty()) return bestText;
+        if(initializedAny) return "";
         String detail=lastError==null?"невідома помилка":lastError.getMessage();
         throw new IOException("Не вдалося запустити кириличний OCR Tesseract: "+detail
             +"; "+modelInfo+"; остання спроба: "+lastAttempt);
