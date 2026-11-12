@@ -114,6 +114,19 @@ jobs:
           echo "app_version=$APP_VERSION" >> "$GITHUB_OUTPUT"
           echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
 
+      - name: Download and verify official Ukrainian LSTM model
+        shell: bash
+        run: |
+          set -euo pipefail
+          MODEL_DIR="app/src/main/assets/tessdata"
+          MODEL_FILE="$MODEL_DIR/ukr.traineddata"
+          mkdir -p "$MODEL_DIR"
+          curl --fail --location --retry 3 --output "$MODEL_FILE" "https://raw.githubusercontent.com/tesseract-ocr/tessdata_best/e12c65a915945e4c28e237a9b52bc4a8f39a0cec/ukr.traineddata"
+          ACTUAL_BLOB_SHA="$(git hash-object "$MODEL_FILE")"
+          test "$ACTUAL_BLOB_SHA" = "be88f63252a3d9e81cdac161e11e4e8498129cfa"
+          test "$(stat -c%s "$MODEL_FILE")" = "10859081"
+          echo "Verified official Ukrainian tessdata_best model: $(stat -c%s "$MODEL_FILE") bytes"
+
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
