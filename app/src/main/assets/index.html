@@ -886,7 +886,7 @@ function viewProductCard(id){
  const photos=linkedFiles('products',id),drawings=linkedFiles('drawings',id),dims=parseProductGeometryDimensions(x.dimensions);
  const serial=x.seriesType==='serial'?'Серійна':x.seriesType==='nonserial'?'Несерійна':'';
  const photo=photos.find(p=>typeof p.dataUrl==='string'&&/^data:image\/(jpeg|png|webp);base64,/i.test(p.dataUrl));
- const photoHtml=photo?'<img class="product-sheet-photo" src="'+photo.dataUrl+'" alt="Фото виробу" onclick="openLinkedProductImage(\'products\',\''+safeText(photo.fileName||'')+'\')">':'<div class="product-sheet-placeholder">Фото готового виробу ще не додано</div>';
+ const photoHtml=photo?'<img class="product-sheet-photo" src="'+photo.dataUrl+'" alt="Фото виробу">':'<div class="product-sheet-placeholder">Фото готового виробу ще не додано</div>';
  let html='<div class="product-sheet-head"><span class="eyebrow">BUTDETAL · КАТАЛОГ ВИРОБІВ</span><h2>'+safeText(title)+'</h2><p>'+safeText(productDisplayValue(x.name)||productDisplayValue(x.type)||'Технічна картка виробу')+(serial?' · '+serial:'')+'</p></div>';
  html+='<div class="product-sheet-grid"><div class="product-sheet-panel"><h3>Фото виробу</h3>'+photoHtml+'</div><div class="product-sheet-panel"><h3>Габаритні розміри</h3>'+productDimensionSvg(dims)+'</div>';
  const spec=[['Марка виробу',x.mark||x.name],['Тип виробу',x.type],['Довжина × ширина × висота',x.dimensions],['Об’єм одного виробу',x.volume?x.volume+' м³/шт.':''],['Марка бетону',x.concreteGrade],['Армування',x.rebar],['Серія / документ',x.series],['Номер креслення',x.drawingNumber],['Додаткові позначення',x.aliases],['Примітки',x.notes]].filter(r=>productDisplayValue(r[1]));
