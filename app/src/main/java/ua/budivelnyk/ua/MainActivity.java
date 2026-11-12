@@ -206,7 +206,7 @@ public class MainActivity extends Activity {
             boolean initialized=false;
             try {
                 // tess-two/Tesseract очікує datapath із завершальним роздільником; далі сам додає tessdata/.
-                initialized=api.init(base.getAbsolutePath()+File.separator,languageMode);
+                initialized=api.init(base.getAbsolutePath()+File.separator,languageMode,TessBaseAPI.OEM_LSTM_ONLY);
                 if(!initialized) {
                     lastError=new IOException("Tesseract init повернув false для мов: "+languageMode);
                     continue;
@@ -222,8 +222,8 @@ public class MainActivity extends Activity {
             } finally {
                 if(initialized) {
                     try { api.clear(); } catch(Exception ignored) {}
-                    try { api.end(); } catch(Exception ignored) {}
                 }
+                try { api.recycle(); } catch(Exception ignored) {}
             }
         }
         String detail=lastError==null?"невідома помилка":lastError.getMessage();
