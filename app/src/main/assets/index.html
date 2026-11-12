@@ -1218,7 +1218,7 @@ function photoCatalogStatus(message,error=false){const el=document.getElementByI
 function compressCatalogPhoto(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onerror=()=>reject(Error('Не вдалося прочитати фото.'));reader.onload=()=>{const img=new Image();img.onerror=()=>reject(Error('Файл не є коректним зображенням.'));img.onload=()=>{const scale=Math.min(1,1800/Math.max(img.width,img.height)),canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(img.width*scale));canvas.height=Math.max(1,Math.round(img.height*scale));const ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,canvas.width,canvas.height);resolve(canvas.toDataURL('image/jpeg',0.86))};img.src=String(reader.result||'')};reader.readAsDataURL(file)})}
 function normalizeCatalogCyrillic(value){
  const map={'A':'А','B':'В','C':'С','E':'Е','H':'Н','K':'К','M':'М','O':'О','P':'Р','T':'Т','X':'Х','Y':'У','a':'а','c':'с','e':'е','i':'і','o':'о','p':'р','x':'х','y':'у'};
- return String(value||'').replace(/[ABCEHKMOPTX Yaceipxy]/g,ch=>map[ch]||ch).replace(/(\\d)n\\b/gi,'$1п');
+ return String(value||'').replace(/[ABCEHKMOPTX Yaceipxy]/g,ch=>map[ch]||ch).replace(/(\d)n\b/gi,'$1п');
 }
 function parsePhotoCatalogText(text){
  const rows=[],seen=new Set();
