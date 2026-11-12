@@ -1233,8 +1233,8 @@ function parsePhotoCatalogText(text){
  ];
  // Загальний пошук марок, навіть якщо їх ще немає в каталозі.
  // На цьому етапі текст уже має бути відокремлений від інших колонок.
- const genericPattern=/(?:^|[^\p{L}\p{N}])((?:\d{1,2}\s*[А-ЯІЇЄҐ]{1,8}\s*\d{1,4}(?:\s*[-.]\s*\d{1,4})+|[А-ЯІЇЄҐ]{1,8}\s*[-.]?\s*\d{1,4}(?:\s*[-.]\s*\d{1,4})+)(?:[А-ЯІЇЄҐ]{1,6}\d{0,3})?)(?=$|[^\p{L}\p{N}])/giu;
- const add=(mark)=>{mark=mark.replace(/\s+/g,' ').replace(/\s*([.-])\s*/g,'$1').trim();const key=normalizeProductSearch(mark);if(!key||seen.has(key))return;seen.add(key);rows.push({mark,dimensions:'',concreteGrade:'',rebar:'',volume:''});};
+ const genericPattern=/(?:^|[^\p{L}\p{N}])((?:\d{1,2}\s*)?[A-Za-zА-ЯІЇЄҐ]{1,8}\s*\d{1,4}(?:\s*[-.]\s*\d{1,4})*(?:\s*[A-Za-zА-ЯІЇЄҐ]{1,6}\d{0,3})?)(?=$|[^\p{L}\p{N}])/giu;
+ const add=(mark)=>{mark=mark.replace(/\s+/g,' ').replace(/\s*([.-])\s*/g,'$1').trim();const key=normalizeProductSearch(normalizeCatalogCyrillic(mark));if(!key||seen.has(key))return;seen.add(key);rows.push({mark,dimensions:'',concreteGrade:'',rebar:'',volume:''});};
  for(const re of patterns){
   let m;while((m=re.exec(all))!==null){
    let mark='';
@@ -1247,11 +1247,16 @@ function parsePhotoCatalogText(text){
    add(mark);
   }
  }
- // Додаємо нові типи марок, які не збіглися з відомими шаблонами.
- let genericMatch;
- while((genericMatch=genericPattern.exec(all))!==null){
-  const candidate=genericMatch[1].replace(/\\s+/g,' ').replace(/\\s*([.-])\\s*/g,'$1').trim();
-  if(/[А-ЯІЇЄҐA-Z]/iu.test(candidate)&&/\\d/u.test(candidate))add(candidate);
+ // Додаємо марки, які не збіглися з відомими шаблонами.
+ // Перевіряємо кожен рядок окремо та допускаємо латиницю, кирилицю і марки без дефіса (наприклад, "МН 15").
+ const rawLines=String(text||'').replace(/\u00a0/g,' ').replace(/[‐‑‒–—]/g,'-').split(/\r?\n/);
+ for(const line of rawLines){
+  let genericMatch;
+  genericPattern.lastIndex=0;
+  while((genericMatch=genericPattern.exec(line))!==null){
+   const candidate=genericMatch[1].replace(/\s+/g,' ').replace(/\s*([.-])\s*/g,'$1').trim();
+   if(/[A-Za-zА-ЯІЇЄҐ]/iu.test(candidate)&&/\d/u.test(candidate))add(candidate);
+  }
  }
  return rows;
 }
