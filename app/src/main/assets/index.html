@@ -883,7 +883,6 @@ function viewProductCard(id){
  let x=productRecords().find(v=>String(v.id)===String(id));if(!x){console.warn('BUTDETAL: product card not found',id);return;}
  currentProductId=id;
  const title=productDisplayValue(x.mark)||productDisplayValue(x.name)||'Виріб';
- document.getElementById('detailTitle').textContent=title;
  const photos=linkedFiles('products',id),drawings=linkedFiles('drawings',id),dims=parseProductGeometryDimensions(x.dimensions);
  const serial=x.seriesType==='serial'?'Серійна':x.seriesType==='nonserial'?'Несерійна':'';
  const photo=photos.find(p=>typeof p.dataUrl==='string'&&/^data:image\/(jpeg|png|webp);base64,/i.test(p.dataUrl));
