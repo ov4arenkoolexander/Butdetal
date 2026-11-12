@@ -1107,9 +1107,74 @@ async function storageDownload(path){const cfg=getSbConfig(),s=await ensureFresh
 function dataUrlBlob(dataUrl){const a=dataUrl.split(',');const mime=(a[0].match(/:(.*?);/)||[])[1]||'application/octet-stream';const raw=atob(a[1]||'');const bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);return new Blob([bytes],{type:mime})}
 function blobDataUrl(blob){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(Error('Не вдалося прочитати файл'));r.readAsDataURL(blob)})}
 async function saveCloudMeta(m){await sbRequest('/rest/v1/archive_files?on_conflict=object_path',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(m)})}
-async function syncButdetalArchive(){const s=currentButdetalSession();if(!s)return {uploaded:0,downloaded:0,missing:0};let uploaded=0,downloaded=0,missing=0;let deleteQueue=[];try{deleteQueue=JSON.parse(localStorage.getItem('butdetal_archive_delete_queue_v1')||'[]')}catch(e){}const pending=[];for(const item of deleteQueue){try{if(!item||!['drawings','products'].includes(item.folder)||!item.fileName)continue;const path=s.user_id+'/'+item.folder+'/'+storageSafeObjectName(item.fileName);await sbRequest('/rest/v1/archive_files?owner_id=eq.'+encodeURIComponent(s.user_id)+'&object_path=eq.'+encodeURIComponent(path),{method:'DELETE',headers:{Prefer:'return=minimal'}});await storageDeleteObject(path)}catch(e){pending.push(item)}}localStorage.setItem('butdetal_archive_delete_queue_v1',JSON.stringify(pending));for(const folder of ['drawings','products']){const items=localArchiveItems(folder);for(const x of items){if(!x.fileName||!x.dataUrl)continue;const path=s.user_id+'/'+folder+'/'+storageSafeObjectName(x.fileName);const blob=dataUrlBlob(x.dataUrl);await storageUpload(path,blob,blob.type||'image/jpeg');await saveCloudMeta({owner_id:s.user_id,folder,object_path:path,file_name:x.fileName,mime_type:blob.type||'image/jpeg',size_bytes:blob.size,caption:x.title||'',notes:x.notes||''});uploaded++}}
-if(window.AndroidStorage&&AndroidStorage.listPdfs&&AndroidStorage.readPdfBase64){for(const x of localPdfItems()){if(!x.fileName)continue;const b64=AndroidStorage.readPdfBase64(x.fileName);if(!b64)continue;const raw=atob(b64),bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);const blob=new Blob([bytes],{type:'application/pdf'}),path=s.user_id+'/pdf/'+storageSafeObjectName(x.fileName);await storageUpload(path,blob,'application/pdf');await saveCloudMeta({owner_id:s.user_id,folder:'pdf',object_path:path,file_name:x.fileName,mime_type:'application/pdf',size_bytes:blob.size,caption:x.title||'',notes:x.notes||''});uploaded++}}
-const remote=await sbRequest('/rest/v1/archive_files?select=id,owner_id,folder,object_path,file_name,mime_type,size_bytes,caption,notes,created_at&deleted_at=is.null&order=created_at.asc');for(const m of (remote||[])){if(m.folder==='pdf'){const have=localPdfItems().some(x=>x.fileName===m.file_name);if(have)continue;const blob=await storageDownload(m.object_path);if(!blob){missing++;continue}const b64=await blobDataUrl(blob);if(window.AndroidStorage&&AndroidStorage.importPdf){const r=AndroidStorage.importPdf(m.file_name,b64,m.caption||m.file_name,m.notes||'','');if(r==='OK')downloaded++}}else{const have=localArchiveItems(m.folder).some(x=>x.fileName===m.file_name);if(have)continue;const blob=await storageDownload(m.object_path);if(!blob){missing++;continue}const data=await blobDataUrl(blob);if(nativeArchive()){const r=AndroidStorage.saveImage(m.folder,m.file_name,data,m.caption||m.file_name,m.notes||'',new Date(m.created_at||Date.now()).toLocaleString('uk-UA'));if(r==='OK')downloaded++}else{const a=loadArchive(m.folder);a.unshift({fileName:m.file_name,title:m.caption||m.file_name,notes:m.notes||'',date:new Date(m.created_at||Date.now()).toLocaleString('uk-UA'),dataUrl:data});localStorage.setItem('bua_'+m.folder,JSON.stringify(a));downloaded++}}}renderArchive();return {uploaded,downloaded,missing}}
+async function syncButdetalArchive(){
+ const session=currentButdetalSession();
+ if(!session)return {uploaded:0,downloaded:0,missing:0};
+ let uploaded=0,downloaded=0,missing=0,deleteQueue=[];
+ try{deleteQueue=JSON.parse(localStorage.getItem('butdetal_archive_delete_queue_v1')||'[]')}catch(e){}
+ const pending=[];
+ for(const item of deleteQueue){
+  try{
+   if(!item||!['drawings','products'].includes(item.folder)||!item.fileName)continue;
+   const filter='folder=eq.'+encodeURIComponent(item.folder)+'&file_name=eq.'+encodeURIComponent(item.fileName);
+   const matches=await sbRequest('/rest/v1/archive_files?select=object_path&'+filter);
+   await sbRequest('/rest/v1/archive_files?'+filter,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({deleted_at:new Date().toISOString()})});
+   const paths=(matches||[]).map(x=>x.object_path).filter(Boolean);
+   if(!paths.length)paths.push(session.user_id+'/'+item.folder+'/'+storageSafeObjectName(item.fileName));
+   for(const path of [...new Set(paths)])await storageDeleteObject(path);
+  }catch(e){pending.push(item)}
+ }
+ localStorage.setItem('butdetal_archive_delete_queue_v1',JSON.stringify(pending));
+ const tombstones=await sbRequest('/rest/v1/archive_files?select=folder,file_name&deleted_at=not.is.null&folder=in.(drawings,products)');
+ const deletedKeys=new Set((tombstones||[]).map(x=>x.folder+'::'+x.file_name));
+ for(const folder of ['drawings','products']){
+  for(const x of localArchiveItems(folder)){
+   if(!x.fileName||!deletedKeys.has(folder+'::'+x.fileName))continue;
+   if(nativeArchive())AndroidStorage.deleteImage(folder,x.fileName);
+   else localStorage.setItem('bua_'+folder,JSON.stringify(loadArchive(folder).filter(y=>y.fileName!==x.fileName)));
+  }
+ }
+ for(const folder of ['drawings','products']){
+  const items=localArchiveItems(folder);
+  for(const x of items){
+   if(!x.fileName||!x.dataUrl||deletedKeys.has(folder+'::'+x.fileName))continue;
+   const path=session.user_id+'/'+folder+'/'+storageSafeObjectName(x.fileName);
+   const blob=dataUrlBlob(x.dataUrl);
+   await storageUpload(path,blob,blob.type||'image/jpeg');
+   await saveCloudMeta({owner_id:session.user_id,folder,object_path:path,file_name:x.fileName,mime_type:blob.type||'image/jpeg',size_bytes:blob.size,caption:x.title||'',notes:x.notes||''});
+   uploaded++;
+  }
+ }
+ if(window.AndroidStorage&&AndroidStorage.listPdfs&&AndroidStorage.readPdfBase64){
+  for(const x of localPdfItems()){
+   if(!x.fileName)continue;
+   const b64=AndroidStorage.readPdfBase64(x.fileName);if(!b64)continue;
+   const raw=atob(b64),bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
+   const blob=new Blob([bytes],{type:'application/pdf'}),path=session.user_id+'/pdf/'+storageSafeObjectName(x.fileName);
+   await storageUpload(path,blob,'application/pdf');
+   await saveCloudMeta({owner_id:session.user_id,folder:'pdf',object_path:path,file_name:x.fileName,mime_type:'application/pdf',size_bytes:blob.size,caption:x.title||'',notes:x.notes||''});
+   uploaded++;
+  }
+ }
+ const remote=await sbRequest('/rest/v1/archive_files?select=id,owner_id,folder,object_path,file_name,mime_type,size_bytes,caption,notes,created_at&deleted_at=is.null&order=created_at.asc');
+ for(const m of (remote||[])){
+  if(m.folder==='pdf'){
+   const have=localPdfItems().some(x=>x.fileName===m.file_name);if(have)continue;
+   const blob=await storageDownload(m.object_path);if(!blob){missing++;continue}
+   const b64=await blobDataUrl(blob);
+   if(window.AndroidStorage&&AndroidStorage.importPdf){const r=AndroidStorage.importPdf(m.file_name,b64,m.caption||m.file_name,m.notes||'','');if(r==='OK')downloaded++}
+  }else{
+   if(!['drawings','products'].includes(m.folder)||deletedKeys.has(m.folder+'::'+m.file_name))continue;
+   const have=localArchiveItems(m.folder).some(x=>x.fileName===m.file_name);if(have)continue;
+   const blob=await storageDownload(m.object_path);if(!blob){missing++;continue}
+   const data=await blobDataUrl(blob);
+   if(nativeArchive()){const r=AndroidStorage.saveImage(m.folder,m.file_name,data,m.caption||m.file_name,m.notes||'',new Date(m.created_at||Date.now()).toLocaleString('uk-UA'));if(r==='OK')downloaded++}
+   else{const a=loadArchive(m.folder);a.unshift({fileName:m.file_name,title:m.caption||m.file_name,notes:m.notes||'',date:new Date(m.created_at||Date.now()).toLocaleString('uk-UA'),dataUrl:data});localStorage.setItem('bua_'+m.folder,JSON.stringify(a));downloaded++}
+  }
+ }
+ renderArchive();
+ return {uploaded,downloaded,missing};
+}
 
 async function deleteCloudProduct(id){const s=currentButdetalSession();if(!s)return;await sbRequest('/rest/v1/shared_records?id=eq.'+encodeURIComponent(id)+'&record_type=eq.product',{method:'DELETE',headers:{Prefer:'return=minimal'}})}
 
