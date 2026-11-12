@@ -112,7 +112,7 @@ function extractProductColumn(result: any): { text: string; found: boolean; reas
     const minY = Math.min(...ys), maxY = Math.max(...ys);
     return { text: String(item.description), minX, maxX, minY, maxY, cx: (minX + maxX) / 2, cy: (minY + maxY) / 2, height: Math.max(1, maxY - minY) };
   }).filter(Boolean) as Array<{text:string;minX:number;maxX:number;minY:number;maxY:number;cx:number;cy:number;height:number}>;
-  const normalize = (value: string) => value.toLocaleLowerCase("uk").replace(/[^\\p{L}]/gu, "");
+  const normalize = (value: string) => value.toLocaleLowerCase("uk").replace(/[^\p{L}]/gu, "");
   const headers = words.filter((word) => normalize(word.text) === "товар");
   if (!headers.length) return { text: "", found: false, reason: "Не знайдено заголовок «Товар».", bounds: null };
 
@@ -158,7 +158,7 @@ function extractProductColumn(result: any): { text: string; found: boolean; reas
     const text = orderedRows
       .map((row) => row.words.sort((a,b) => a.minX-b.minX).map((word) => word.text).join(" ").trim())
       .filter(Boolean)
-      .join("\\n");
+      .join("\n");
     if (!text) continue;
 
     const maxBottom = Math.max(...cells.map((word) => word.maxY));
