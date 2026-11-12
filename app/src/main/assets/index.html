@@ -1257,7 +1257,9 @@ function parsePhotoCatalogText(text){
   let genericMatch;genericPattern.lastIndex=0;
   while((genericMatch=genericPattern.exec(line))!==null){
    const candidate=genericMatch[1].replace(/\s+/g,' ').replace(/\s*([.-])\s*/g,'$1').trim();
-   if(/[A-Za-zА-ЯІЇЄҐ]/iu.test(candidate)&&/\d/u.test(candidate))add(candidate,dimensions);
+   const typeMatch=line.match(/^\s*(Лоток|Плита)\b/iu);
+   const fullMark=(typeMatch?typeMatch[1]+' ':'')+candidate;
+   if(/[A-Za-zА-ЯІЇЄҐ]/iu.test(candidate)&&/\d/u.test(candidate))add(fullMark,dimensions);
   }
  }
  return rows;
