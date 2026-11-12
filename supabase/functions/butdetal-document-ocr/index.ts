@@ -101,54 +101,81 @@ async function getGoogleAccessToken(): Promise<string> {
   return cachedAccessToken;
 }
 
-function extractProductColumnText(result: any): string {
+function extractProductColumn(result: any): { text: string; found: boolean; reason: string; bounds: null | { left: number; top: number; right: number; bottom: number; normalized: boolean } } {
   const annotations = Array.isArray(result?.textAnnotations) ? result.textAnnotations.slice(1) : [];
   const words = annotations.map((item: any) => {
-    const vertices = item?.boundingPoly?.vertices || item?.boundingPoly?.normalizedVertices || [];
-    if (!item?.description || !vertices.length) return null;
-    const xs = vertices.map((v: any) => Number(v.x ?? 0));
-    const ys = vertices.map((v: any) => Number(v.y ?? 0));
+    const raw = item?.boundingPoly?.vertices?.length ? item.boundingPoly.vertices : item?.boundingPoly?.normalizedVertices;
+    if (!item?.description || !Array.isArray(raw) || !raw.length) return null;
+    const xs = raw.map((v: any) => Number(v.x ?? 0));
+    const ys = raw.map((v: any) => Number(v.y ?? 0));
     const minX = Math.min(...xs), maxX = Math.max(...xs);
     const minY = Math.min(...ys), maxY = Math.max(...ys);
     return { text: String(item.description), minX, maxX, minY, maxY, cx: (minX + maxX) / 2, cy: (minY + maxY) / 2, height: Math.max(1, maxY - minY) };
   }).filter(Boolean) as Array<{text:string;minX:number;maxX:number;minY:number;maxY:number;cx:number;cy:number;height:number}>;
-  const normalize = (value: string) => value.toLocaleLowerCase("uk").replace(/[^\p{L}]/gu, "");
-  const header = words.find((word) => normalize(word.text) === "товар");
-  if (!header) return "";
+  const normalize = (value: string) => value.toLocaleLowerCase("uk").replace(/[^\\p{L}]/gu, "");
+  const headers = words.filter((word) => normalize(word.text) === "товар");
+  if (!headers.length) return { text: "", found: false, reason: "Не знайдено заголовок «Товар».", bounds: null };
 
-  const sameHeaderRow = words.filter((word) =>
-    word !== header && Math.abs(word.cy - header.cy) <= Math.max(12, header.height * 0.9)
-  );
-  const leftHeaders = sameHeaderRow.filter((word) => word.cx < header.cx).sort((a,b) => b.cx-a.cx);
-  const rightHeaders = sameHeaderRow.filter((word) => word.cx > header.cx).sort((a,b) => a.cx-b.cx);
-  const left = leftHeaders.length ? (leftHeaders[0].cx + header.cx) / 2 : -Infinity;
-  const right = rightHeaders.length ? (rightHeaders[0].cx + header.cx) / 2 : Infinity;
+  for (const header of headers) {
+    const rowTolerance = Math.max(10, header.height * 0.85);
+    const sameHeaderRow = words.filter((word) =>
+      word !== header && Math.abs(word.cy - header.cy) <= rowTolerance
+    );
+    const leftHeaders = sameHeaderRow.filter((word) => word.cx < header.cx).sort((a,b) => b.cx-a.cx);
+    const rightHeaders = sameHeaderRow.filter((word) => word.cx > header.cx).sort((a,b) => a.cx-b.cx);
 
-  const cells = words.filter((word) =>
-    word.cy > header.maxY &&
-    word.cx > left &&
-    word.cx < right
-  ).sort((a,b) => a.cy-b.cy || a.minX-b.minX);
-  if (!cells.length) return "";
+    // Fail closed: without a neighboring header on BOTH sides, the column
+    // boundary is ambiguous and we must not collect text from the whole page.
+    if (!leftHeaders.length || !rightHeaders.length) continue;
 
-  const heights = cells.map((word) => word.height).sort((a,b) => a-b);
-  const medianHeight = heights[Math.floor(heights.length / 2)] || header.height || 12;
-  const rowTolerance = Math.max(8, medianHeight * 0.75);
-  const rows: Array<{ y:number; words: typeof cells }> = [];
-  for (const word of cells) {
-    let row = rows.find((candidate) => Math.abs(candidate.y - word.cy) <= rowTolerance);
-    if (!row) {
-      row = { y: word.cy, words: [] };
-      rows.push(row);
+    const left = (leftHeaders[0].maxX + header.minX) / 2;
+    const right = (header.maxX + rightHeaders[0].minX) / 2;
+    const columnWidth = right - left;
+    if (!Number.isFinite(columnWidth) || columnWidth < Math.max(header.height * 2.2, (header.maxX-header.minX) * 1.8)) continue;
+
+    const cells = words.filter((word) =>
+      word.cy > header.maxY &&
+      word.cx > left &&
+      word.cx < right
+    ).sort((a,b) => a.cy-b.cy || a.minX-b.minX);
+    if (!cells.length) continue;
+
+    const heights = cells.map((word) => word.height).sort((a,b) => a-b);
+    const medianHeight = heights[Math.floor(heights.length / 2)] || header.height || 12;
+    const textRowTolerance = Math.max(7, medianHeight * 0.72);
+    const rows: Array<{ y:number; words: typeof cells }> = [];
+    for (const word of cells) {
+      let row = rows.find((candidate) => Math.abs(candidate.y - word.cy) <= textRowTolerance);
+      if (!row) {
+        row = { y: word.cy, words: [] };
+        rows.push(row);
+      }
+      row.words.push(word);
+      row.y = row.words.reduce((sum, item) => sum + item.cy, 0) / row.words.length;
     }
-    row.words.push(word);
-    row.y = row.words.reduce((sum, item) => sum + item.cy, 0) / row.words.length;
+
+    const orderedRows = rows.sort((a,b) => a.y-b.y);
+    const text = orderedRows
+      .map((row) => row.words.sort((a,b) => a.minX-b.minX).map((word) => word.text).join(" ").trim())
+      .filter(Boolean)
+      .join("\\n");
+    if (!text) continue;
+
+    const maxBottom = Math.max(...cells.map((word) => word.maxY));
+    const normalized = Math.max(...words.map((word) => Math.max(word.maxX, word.maxY))) <= 1.01;
+    return {
+      text,
+      found: true,
+      reason: "Межі колонки підтверджені сусідніми заголовками.",
+      bounds: { left, top: header.minY, right, bottom: maxBottom, normalized },
+    };
   }
-  return rows
-    .sort((a,b) => a.y-b.y)
-    .map((row) => row.words.sort((a,b) => a.minX-b.minX).map((word) => word.text).join(" ").trim())
-    .filter(Boolean)
-    .join("\n");
+  return {
+    text: "",
+    found: false,
+    reason: "Знайдено слово «Товар», але не вдалося надійно підтвердити межі колонки за сусідніми заголовками. Перевір фото: заголовки сусідніх колонок мають бути видимі.",
+    bounds: null,
+  };
 }
 
 Deno.serve(async (req: Request) => {
@@ -218,8 +245,15 @@ Deno.serve(async (req: Request) => {
     if (result.error) return json({ error: String(result.error.message || "Не вдалося розпізнати документ."), code: "VISION_IMAGE_ERROR" }, 422);
     const text = String(result.fullTextAnnotation?.text || result.textAnnotations?.[0]?.description || "").trim();
     if (!text) return json({ error: "Google Vision не знайшов тексту на фото.", code: "NO_TEXT" }, 422);
-    const productColumnText = extractProductColumnText(result);
-    return json({ provider: "google-cloud-vision", text, productColumnText, productColumnFound: Boolean(productColumnText) });
+    const productColumn = extractProductColumn(result);
+    return json({
+      provider: "google-cloud-vision",
+      text,
+      productColumnText: productColumn.text,
+      productColumnFound: productColumn.found,
+      productColumnReason: productColumn.reason,
+      productColumnBounds: productColumn.bounds,
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Помилка авторизації Google Cloud Vision.";
     return json({ error: message.slice(0, 500), code: "GOOGLE_AUTH_ERROR" }, 503);
