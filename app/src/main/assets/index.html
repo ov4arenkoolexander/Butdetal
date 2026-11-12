@@ -1227,6 +1227,9 @@ function parsePhotoCatalogText(text){
   /(?:^|[^\p{L}\p{N}])ОПБ\s*[-.]\s*(\d{1,3})\s*[-.]\s*(\d{1,3})\s*([Тт])?/giu,
   /(?:^|[^\p{L}\p{N}])Балка\s*(Б)\s*[-.]\s*(\d{1,3})(?=\s|$|[(),])/giu
  ];
+ // Загальний пошук марок, навіть якщо їх ще немає в каталозі.
+ // На цьому етапі текст уже має бути відокремлений від інших колонок.
+ const genericPattern=/(?:^|[^\\p{L}\\p{N}])((?:\\d{1,2}\\s*[А-ЯІЇЄҐA-Z]{1,8}\\s*\\d{1,4}|[А-ЯІЇЄҐA-Z]{1,8}\\s*\\d{2,4})(?:\\s*[-.]\\s*\\d{1,4}){0,4}(?:\\s*[А-ЯІЇЄҐA-Z]{1,6}\\d{0,3})?)(?=$|[^\\p{L}\\p{N}])/giu;
  const add=(mark)=>{mark=mark.replace(/\s+/g,' ').replace(/\s*([.-])\s*/g,'$1').trim();const key=normalizeProductSearch(mark);if(!key||seen.has(key))return;seen.add(key);rows.push({mark,dimensions:'',concreteGrade:'',rebar:'',volume:''});};
  for(const re of patterns){
   let m;while((m=re.exec(all))!==null){
@@ -1240,12 +1243,18 @@ function parsePhotoCatalogText(text){
    add(mark);
   }
  }
+ // Додаємо нові типи марок, які не збіглися з відомими шаблонами.
+ let genericMatch;
+ while((genericMatch=genericPattern.exec(all))!==null){
+  const candidate=genericMatch[1].replace(/\\s+/g,' ').replace(/\\s*([.-])\\s*/g,'$1').trim();
+  if(/[А-ЯІЇЄҐA-Z]/iu.test(candidate)&&/\\d/u.test(candidate))add(candidate);
+ }
  return rows;
 }
 function retryPhotoCatalogParsing(){
  const text=document.getElementById('photoCatalogRawText')?.value||'';
  const rows=parsePhotoCatalogText(text);
- if(!rows.length){photoCatalogStatus('У колонці «Товар» не знайдено відомих марок виробів.',true);return}
+ if(!rows.length){photoCatalogStatus('У колонці «Товар» не знайдено марок виробів. Перевір, чи чітко видно позначення.',true);return}
  const preview=document.getElementById('photoCatalogPreview'),apply=document.getElementById('photoCatalogApply');
  const products=productRecords();
  photoCatalogPending=rows.map(x=>({...x,duplicate:products.find(p=>normalizeProductSearch(p.mark||p.name)===normalizeProductSearch(x.mark)||String(p.aliases||'').split(/[;,]/).some(a=>normalizeProductSearch(a)===normalizeProductSearch(x.mark)))?.id||''}));
@@ -1286,7 +1295,7 @@ async function recognizePhotoCatalog(){
   if(!photoCatalogPending.length){
    if(productColumnText.trim()){
     preview.innerHTML=photoCatalogColumnPreviewHtml+'<div class="card" style="margin-top:12px"><b>Вміст колонки «Товар»</b><p class="muted">Знайдено колонку, але марки виробів не розпізнано автоматично. Перевір лише її вміст нижче.</p><textarea id="photoCatalogRawText" rows="8" style="width:100%;box-sizing:border-box;font-size:15px;line-height:1.5">'+safeText(productColumnText)+'</textarea><button class="btn secondary" type="button" onclick="retryPhotoCatalogParsing()">Повторно знайти вироби в колонці «Товар»</button></div>';
-    photoCatalogStatus('Колонку «Товар» відокремлено. Відомих марок поки не знайдено.',true);
+    photoCatalogStatus('Колонку «Товар» відокремлено. Автоматично розпізнаних марок поки не знайдено.',true);
     preview.scrollIntoView({behavior:'smooth',block:'start'});
    }else if(cloudText){
     preview.innerHTML='<div class="card" style="margin-top:12px"><b>Не вдалося безпечно виділити колонку «Товар»</b><p class="muted">'+safeText(columnReason||'Щоб не додати назви з інших колонок, імпорт зупинено. Переконайся, що заголовок «Товар» і сусідні заголовки колонок чітко видимі.')+'</p></div>';
