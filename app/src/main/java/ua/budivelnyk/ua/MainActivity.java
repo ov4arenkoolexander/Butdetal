@@ -198,36 +198,45 @@ public class MainActivity extends Activity {
 
     private String recognizeBitmap(Bitmap bitmap) throws Exception {
         File base=ensureTessdata();
-        // Кириличні моделі без англійської, щоб не змішувати алфавіти.
-        String[] languageModes={"ukr+rus","ukr"};
+        File data=new File(base,"tessdata");
+        File ukrainianModel=new File(data,"ukr.traineddata");
+        String modelInfo="ukr="+ukrainianModel.length()+" байт, існує="+ukrainianModel.isFile()
+            +", datapath="+base.getAbsolutePath();
+        // Спочатку запускаємо лише українську модель: це виключає помилку через rus.traineddata.
+        String[] languageModes={"ukr","ukr+rus"};
+        String[] dataPaths={base.getAbsolutePath()+File.separator,base.getAbsolutePath(),data.getAbsolutePath()+File.separator};
         Exception lastError=null;
+        String lastAttempt="";
         for(String languageMode:languageModes) {
-            TessBaseAPI api=new TessBaseAPI();
-            boolean initialized=false;
-            try {
-                // tess-two/Tesseract очікує datapath із завершальним роздільником; далі сам додає tessdata/.
-                initialized=api.init(base.getAbsolutePath()+File.separator,languageMode,TessBaseAPI.OEM_LSTM_ONLY);
-                if(!initialized) {
-                    lastError=new IOException("Tesseract init повернув false для мов: "+languageMode);
-                    continue;
+            for(String dataPath:dataPaths) {
+                TessBaseAPI api=new TessBaseAPI();
+                boolean initialized=false;
+                try {
+                    lastAttempt="мови="+languageMode+", шлях="+dataPath;
+                    initialized=api.init(dataPath,languageMode,TessBaseAPI.OEM_LSTM_ONLY);
+                    if(!initialized) {
+                        lastError=new IOException("Tesseract init повернув false ("+lastAttempt+")");
+                        continue;
+                    }
+                    api.setPageSegMode(TessBaseAPI.PageSegMode.PSM_SINGLE_COLUMN);
+                    api.setVariable("tessedit_char_whitelist",
+                        "0123456789АБВГҐДЕЄЖЗИІЇЙКЛМНОПРСТУФХЦЧШЩЬЮЯабвгґдеєжзиіїйклмнопрстуфхцчшщьюя.,-()/×х ");
+                    api.setImage(bitmap);
+                    String result=api.getUTF8Text();
+                    return result==null?"":result.trim();
+                } catch(Exception e) {
+                    lastError=e;
+                } finally {
+                    if(initialized) {
+                        try { api.clear(); } catch(Exception ignored) {}
+                    }
+                    try { api.recycle(); } catch(Exception ignored) {}
                 }
-                api.setPageSegMode(TessBaseAPI.PageSegMode.PSM_SINGLE_COLUMN);
-                api.setVariable("tessedit_char_whitelist",
-                    "0123456789АБВГҐДЕЄЖЗИІЇЙКЛМНОПРСТУФХЦЧШЩЬЮЯабвгґдеєжзиіїйклмнопрстуфхцчшщьюя.,-()/×х ");
-                api.setImage(bitmap);
-                String result=api.getUTF8Text();
-                return result==null?"":result.trim();
-            } catch(Exception e) {
-                lastError=e;
-            } finally {
-                if(initialized) {
-                    try { api.clear(); } catch(Exception ignored) {}
-                }
-                try { api.recycle(); } catch(Exception ignored) {}
             }
         }
         String detail=lastError==null?"невідома помилка":lastError.getMessage();
-        throw new IOException("Не вдалося запустити кириличний OCR Tesseract: "+detail);
+        throw new IOException("Не вдалося запустити кириличний OCR Tesseract: "+detail
+            +"; "+modelInfo+"; остання спроба: "+lastAttempt);
     }
 
     private String recognizeWithMlKit(Bitmap bitmap) throws Exception {
