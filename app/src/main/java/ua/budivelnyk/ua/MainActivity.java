@@ -112,41 +112,78 @@ public class MainActivity extends Activity {
         return s.length()>100?s.substring(0,100):s;
     }
 
+    private static String sha256(File file) throws Exception {
+        java.security.MessageDigest digest=java.security.MessageDigest.getInstance("SHA-256");
+        try(InputStream in=new FileInputStream(file)) {
+            byte[] buffer=new byte[16384]; int count;
+            while((count=in.read(buffer))>0) digest.update(buffer,0,count);
+        }
+        StringBuilder hex=new StringBuilder();
+        for(byte value:digest.digest()) hex.append(String.format(Locale.ROOT,"%02x",value&0xff));
+        return hex.toString();
+    }
+
     private File ensureTessdata() throws Exception {
         File base=new File(getFilesDir(),"tesseract");
         File data=new File(base,"tessdata");
         if(!data.exists()&&!data.mkdirs()) throw new IOException("Не вдалося створити папку tessdata");
+        if(!base.isDirectory() || !data.isDirectory())
+            throw new IOException("Неправильний каталог Tesseract: "+base.getAbsolutePath());
+
         for(String lang:new String[]{"ukr","rus","eng"}) {
+            String assetPath="tessdata/"+lang+".traineddata";
             File target=new File(data,lang+".traineddata");
-            long expected;
-            try(InputStream probe=getAssets().open("tessdata/"+lang+".traineddata")) {
-                expected=probe.available();
+            long expectedBytes=0;
+            java.security.MessageDigest assetDigest=java.security.MessageDigest.getInstance("SHA-256");
+            try(InputStream in=getAssets().open(assetPath)) {
+                byte[] buffer=new byte[16384]; int count;
+                while((count=in.read(buffer))>0) {
+                    assetDigest.update(buffer,0,count);
+                    expectedBytes+=count;
+                }
             }
-            if(!target.exists() || target.length()!=expected) {
+            String expectedHash=toHex(assetDigest.digest());
+            boolean valid=target.isFile() && target.length()==expectedBytes
+                && expectedHash.equals(sha256(target));
+
+            if(!valid) {
                 File temp=new File(data,lang+".traineddata.tmp");
-                try(InputStream in=getAssets().open("tessdata/"+lang+".traineddata");
-                    OutputStream out=new FileOutputStream(temp)) {
-                    byte[] b=new byte[16384]; int n;
-                    while((n=in.read(b))>0) out.write(b,0,n);
+                java.security.MessageDigest copiedDigest=java.security.MessageDigest.getInstance("SHA-256");
+                long copiedBytes=0;
+                try(InputStream in=getAssets().open(assetPath);
+                    OutputStream out=new FileOutputStream(temp,false)) {
+                    byte[] buffer=new byte[16384]; int count;
+                    while((count=in.read(buffer))>0) {
+                        out.write(buffer,0,count);
+                        copiedDigest.update(buffer,0,count);
+                        copiedBytes+=count;
+                    }
                     out.flush();
                 }
-                if(!temp.exists() || temp.length()!=expected) {
+                String copiedHash=toHex(copiedDigest.digest());
+                if(copiedBytes!=expectedBytes || !expectedHash.equals(copiedHash)) {
                     temp.delete();
-                    throw new IOException("Мовна модель "+lang+" скопіювалася не повністю. Очікується "+expected+" байт.");
+                    throw new IOException("Модель "+lang+" скопіювалася некоректно: "+copiedBytes+" із "+expectedBytes+" байт.");
                 }
                 if(target.exists()&&!target.delete()) {
                     temp.delete();
-                    throw new IOException("Не вдалося замінити мовну модель "+lang);
+                    throw new IOException("Не вдалося замінити пошкоджену мовну модель "+lang);
                 }
                 if(!temp.renameTo(target)) {
                     temp.delete();
-                    throw new IOException("Не вдалося завершити копіювання мовної моделі "+lang);
+                    throw new IOException("Не вдалося встановити мовну модель "+lang);
                 }
             }
-            if(!target.exists() || target.length()!=expected)
-                throw new IOException("Мовний файл "+lang+" має неправильний розмір: "+target.length()+" із "+expected+" байт.");
+            if(!target.isFile() || target.length()!=expectedBytes || !expectedHash.equals(sha256(target)))
+                throw new IOException("Перевірка цілісності мовної моделі "+lang+" не пройдена.");
         }
         return base;
+    }
+
+    private static String toHex(byte[] bytes) {
+        StringBuilder hex=new StringBuilder(bytes.length*2);
+        for(byte value:bytes) hex.append(String.format(Locale.ROOT,"%02x",value&0xff));
+        return hex.toString();
     }
 
     private void initializePdfText() { PDFBoxResourceLoader.init(getApplicationContext()); }
