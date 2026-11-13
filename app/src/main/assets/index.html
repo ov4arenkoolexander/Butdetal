@@ -811,7 +811,7 @@ function productDisplayValue(value){return value===null||value===undefined?'':St
 function productMetaChip(label,value,suffix=''){const v=productDisplayValue(value);if(!v)return '';return '<span class="product-meta-chip"><b>'+safeText(label)+':</b> '+safeText(v+suffix)+'</span>'}
 function renderProductCatalog(){
  let q=(document.getElementById('productSearch')?.value||'').trim(),filter=document.getElementById('productSeriesFilter')?.value||'all';
- const productPhotoIndex=new Map();for(const photo of loadArchive('products')){for(const linkedId of archiveProductIds(photo)){if(!productPhotoIndex.has(linkedId))productPhotoIndex.set(linkedId,photo)}}
+
  let a=productRecords().filter(x=>productSearchMatches(x,q)&&(filter==='all'||(filter==='unset'?!x.seriesType:x.seriesType===filter)));
  if(normalizeProductSearch(q))a.sort((x,y)=>productMatchScore(y,q)-productMatchScore(x,q));
  let el=document.getElementById('productCatalog');if(!el)return;
@@ -834,7 +834,7 @@ function renderProductCatalog(){
   ].filter(Boolean).join('');
   const chips=meta?'<div class="product-card-meta">'+meta+'</div>':'';
   const cardId=String(x.id||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;');
-  const photo=productPhotoIndex.get(String(x.id));
+  const photo=linkedFiles('products',x.id)[0]||null;
   const photoHtml=photo&&photo.dataUrl?'<img class="product-card-photo" src="'+photo.dataUrl+'" alt="Фото виробу" data-product-id="'+cardId+'" onclick="openProductPhoto(this.dataset.productId)">':'<div class="product-card-photo-placeholder" aria-hidden="true"></div>';
   return '<article class="item product-visual-card" style="'+productCardBackground(x)+'"><div class="product-visual-content"><div class="product-card-layout"><div><div class="product-card-top"><b>'+safeText(title)+'</b>'+badge+'</div>'+subtitle+chips+'<div class="product-card-actions"><button type="button" class="btn" data-product-id="'+cardId+'" onclick="viewProductCard(this.dataset.productId)">Відкрити картку</button></div></div>'+photoHtml+'</div></div></article>';
  }).join('');
