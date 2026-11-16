@@ -560,10 +560,8 @@ async function syncSeriesCatalog(){
     knownKeys.set(key,n);
    }
   }
-  for(const [key,name] of localNameByKey){
-   const prior=knownKeys.get(key);
-   if(prior&&prior!==name)throw Error('Назва локальної серії «'+name+'» не збігається зі збереженою назвою «'+prior+'» для того самого ключа. Синхронізацію зупинено, щоб не видалити дані.');
-  }
+  // Назва папки може бути змінена або локалізована. Якщо стабільний ключ збігається,
+  // вважаємо локальну назву актуальною та оновлюємо відомий стан без видалення файлів.
   const listUrl=cfg.url.replace(/\/$/,'')+'/storage/v1/object/list/butdetal-archive',remoteItems=[],pageSize=1000;
   for(let offset=0;;offset+=pageSize){const r=await fetch(listUrl,{method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({prefix:prefix,limit:pageSize,offset:offset,sortBy:{column:'name',order:'asc'}})});if(!r.ok)throw Error('Не вдалося отримати список серій із сервера (HTTP '+r.status+').');const page=await r.json();if(!Array.isArray(page))throw Error('Сервер повернув некоректний список папок серій.');remoteItems.push(...page);if(page.length<pageSize)break}
   const remoteByBase=new Map();
@@ -579,7 +577,7 @@ async function syncSeriesCatalog(){
   }
   const keys=Array.from(new Set([...localNameByKey.keys(),...remoteByBase.keys(),...knownKeys.keys()])).sort((a,b)=>a.localeCompare(b,'uk'));
   if(!keys.length){showSeriesStatus('Немає папок серій для синхронізації.',false);return}
-  let totalAdded=0,totalConflicts=0,done=0,removedLocal=0,removedRemote=0;const errors=[],nextKnown=new Set(knownNames.map(n=>String(n)));
+  let totalAdded=0,totalConflicts=0,done=0,removedLocal=0,removedRemote=0;const errors=[],nextKnown=new Set(knownNames.map(n=>{const value=String(n),key=storageSafeFolderKey(value);return localNameByKey.get(key)||value;}));
   for(const key of keys){
    const name=localNameByKey.get(key)||knownKeys.get(key)||key,row=remoteByBase.get(key)||{},known=knownKeys.has(key),local=localNameByKey.has(key),remote=!!(row.manifest||row.legacy);
    const manifestPath=prefix+key+'.manifest.json';
