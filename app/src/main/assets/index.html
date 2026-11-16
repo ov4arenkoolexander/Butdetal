@@ -845,11 +845,10 @@ function editProductCard(id){let x=productRecords().find(v=>v.id===id);if(!x)ret
 async function saveProductFiles(inputId,folder,id,label){let files=[...(document.getElementById(inputId).files||[])];for(let f of files){if(!f.type.startsWith('image/'))throw Error('Файл '+f.name+' не є зображенням.');if(f.size>25*1024*1024)throw Error('Файл '+f.name+' більший за 25 МБ.');let data=await compressImage(f),title=(document.getElementById('productMark').value.trim()||document.getElementById('productName').value.trim()||'Виріб')+' — '+label,date=new Date().toLocaleString('uk-UA'),fileName=Date.now()+'_'+Math.random().toString(36).slice(2,7)+'.jpg',notes='productId:'+id+'; '+label;if(nativeArchive()){let r=AndroidStorage.saveImage(folder,fileName,data,title,notes,date);if(r!=='OK')throw Error(String(r||'Помилка збереження файлу.'))}else{let a=loadArchive(folder);a.unshift({fileName,title,notes,date,dataUrl:data});localStorage.setItem('bua_'+folder,JSON.stringify(a))}}}
 function filterSeriesMatchesForProduct(product,matches){
  const identity=[product?.mark,product?.name,product?.type,product?.aliases].filter(Boolean).join(' ').toLowerCase();
- const isFloorSlab=/(^|\\s)пк\\s*\\d|плита\\s*(перекрит|покрит)|плит\\w*\\s*(перекрит|покрит)/i.test(identity);
- const isCurb=/(бордюр|бортов(ий|а|і)|поребрик)/i.test(identity);
- // Назви серій можуть бути українською, російською або латинською транслітерацією.
- const blockedForSlab=/(бордюр\\w*|поребрик\\w*|бортов\\w*|bordyr\\w*|bordur\\w*|curb\\w*|лоток\\w*|водовідвід\\w*)/i;
- const blockedForCurb=/(плит\\w*\\s*(перекрит|покрит)|пустотн\\w*|багатопустотн\\w*)/i;
+ const isFloorSlab=/(^|\s)пк\s*\d|плита\s*(перекрит|покрит)|плит\w*\s*(перекрит|покрит)/i.test(identity);
+ const isCurb=/(бордюр|бортов\w*|поребрик|bordyr|bordur|curb)/i.test(identity);
+ const blockedForSlab=/(бордюр\w*|поребрик\w*|бортов\w*|bordyr\w*|bordur\w*|curb\w*|лоток\w*|водовідвід\w*)/i;
+ const blockedForCurb=/(плит\w*\s*(перекрит|покрит)|пустотн\w*|багатопустотн\w*)/i;
  return (matches||[]).filter(m=>{
   const descriptor=[m.title,m.category,m.pdf].filter(Boolean).join(' ');
   if(isFloorSlab&&blockedForSlab.test(descriptor))return false;
