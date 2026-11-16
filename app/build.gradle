@@ -18,8 +18,8 @@ android {
         applicationId 'ua.budivelnyk.ua'
         minSdk 23
         targetSdk 35
-        versionCode 125
-        versionName '2.1.38' // Filters curb series out of floor-slab matches
+        versionCode 126
+        versionName '2.1.39' // Filters curb series out of floor-slab matches
     }
     buildTypes {
         release {
