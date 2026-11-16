@@ -18,8 +18,8 @@ android {
         applicationId 'ua.budivelnyk.ua'
         minSdk 23
         targetSdk 35
-        versionCode 127
-        versionName '2.1.40' // Select pages from a series PDF and attach them to product drawings
+        versionCode 128
+        versionName '2.1.41' // Manual series selection from product editor
     }
     buildTypes {
         release {
