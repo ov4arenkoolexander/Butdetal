@@ -299,7 +299,20 @@ public class MainActivity extends Activity {
         } finally {
             if(enhanced!=null&&!enhanced.isRecycled()) enhanced.recycle();
         }
+        // ML Kit є резервним локальним OCR для латинських маркувань і цифр.
+        // Кирилицю й надалі в першу чергу розпізнає Tesseract з українськими моделями.
+        String latinText="";
+        if(bestText.isEmpty() || bestConfidence<55) {
+            try {
+                latinText=recognizeWithMlKit(bitmap);
+            } catch(Exception mlKitError) {
+                // Помилка резервного механізму не повинна ламати основний OCR.
+            }
+        }
+        if(!latinText.isEmpty() && (bestText.isEmpty() || latinText.length()>bestText.length()*1.2))
+            return latinText;
         if(!bestText.isEmpty()) return bestText;
+        if(!latinText.isEmpty()) return latinText;
         if(initializedAny) return "";
         String detail=lastError==null?"невідома помилка":lastError.getMessage();
         throw new IOException("Не вдалося запустити кириличний OCR Tesseract: "+detail
