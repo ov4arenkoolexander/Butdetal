@@ -18,8 +18,8 @@ android {
         applicationId 'ua.budivelnyk.ua'
         minSdk 23
         targetSdk 35
-        versionCode 128
-        versionName '2.1.41' // Manual series selection from product editor
+        versionCode 129
+        versionName '2.1.42' // Series picker dialog and visible page selection checkbox
     }
     buildTypes {
         release {
