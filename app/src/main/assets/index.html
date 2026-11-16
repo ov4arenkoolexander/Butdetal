@@ -860,7 +860,8 @@ function searchManualProductSeries(){
 }
 function chooseManualProductSeries(index){
  const item=manualProductSeriesItems[index];if(!item?.pdf)return;
- const id=document.getElementById('productId')?.value||('prod_'+Date.now());
+ const id=document.getElementById('productId')?.value;
+ if(!id||!productRecords().some(x=>String(x.id)===String(id))){alert('Спочатку збережи нову картку виробу, потім обирай серію.');return}
  const count=AndroidStorage.getSeriesPdfPageCount(item.pdf);
  if(count<1){alert('Не вдалося відкрити PDF цієї серії.');return}
  const records=productRecords(),at=records.findIndex(x=>String(x.id)===String(id));
