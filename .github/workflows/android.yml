@@ -194,5 +194,5 @@ jobs:
           target_commitish: ${{ github.sha }}
           generate_release_notes: true
           prerelease: ${{ startsWith(steps.version.outputs.app_version, '3.') }}
-          make_latest: false
+          make_latest: ${{ !startsWith(steps.version.outputs.app_version, '3.') }}
           files: app/build/outputs/apk/release/app-release.apk
