@@ -18,8 +18,8 @@ android {
         applicationId 'ua.budivelnyk.ua'
         minSdk 23
         targetSdk 35
-        versionCode 133
-        versionName '2.1.46' // Document scanning in photo and drawing archive
+        versionCode 134
+        versionName '2.1.47' // Fix archive photo save and document scanning
     }
     buildTypes {
         release {
