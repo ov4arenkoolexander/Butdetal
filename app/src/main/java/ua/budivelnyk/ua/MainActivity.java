@@ -780,14 +780,20 @@ public class MainActivity extends Activity {
             } catch (Exception e) { return "Помилка надсилання: " + e.getMessage(); }
         }
         @JavascriptInterface public String listImages(String c) {
-            JSONArray arr=new JSONArray(); File[] files=folder(c).listFiles((d,n)->n.toLowerCase(Locale.ROOT).endsWith(".jpg"));
+            JSONArray arr=new JSONArray();
+            File[] files=folder(c).listFiles((d,n)->{
+                String lower=n.toLowerCase(Locale.ROOT);
+                return lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".png");
+            });
             if(files==null)return arr.toString();
             Arrays.sort(files,(a,b)->Long.compare(b.lastModified(),a.lastModified()));
             for(File f:files)try{
                 File mf=new File(f.getParentFile(),f.getName()+".json");
                 JSONObject o=mf.exists()?new JSONObject(read(mf)):new JSONObject();
                 o.put("fileName",f.getName());
-                o.put("dataUrl","data:image/jpeg;base64,"+Base64.encodeToString(bytes(f),Base64.NO_WRAP));
+                String lower=f.getName().toLowerCase(Locale.ROOT);
+                String mime=lower.endsWith(".png")?"image/png":"image/jpeg";
+                o.put("dataUrl","data:"+mime+";base64,"+Base64.encodeToString(bytes(f),Base64.NO_WRAP));
                 arr.put(o);
             }catch(Exception ignored){}
             return arr.toString();
