@@ -2,7 +2,7 @@ name: Build and publish BUTDETAL APK
 
 on:
   push:
-    branches: [main, feature/series-catalog-import]
+    branches: [main, feature/series-catalog-import, develop/3.0.0]
     tags: ['v*']
   pull_request:
     branches: [main]
@@ -75,7 +75,7 @@ jobs:
           retention-days: 30
 
   publish-release:
-    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'push' && github.ref == 'refs/heads/feature/series-catalog-import')
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'push' && (github.ref == 'refs/heads/feature/series-catalog-import' || github.ref == 'refs/heads/develop/3.0.0'))
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -193,4 +193,6 @@ jobs:
           tag_name: ${{ steps.version.outputs.tag_name }}
           target_commitish: ${{ github.sha }}
           generate_release_notes: true
+          prerelease: ${{ startsWith(steps.version.outputs.app_version, '3.') }}
+          make_latest: false
           files: app/build/outputs/apk/release/app-release.apk
