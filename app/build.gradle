@@ -18,8 +18,8 @@ android {
         applicationId 'ua.budivelnyk.ua'
         minSdk 23
         targetSdk 35
-        versionCode 131
-        versionName '2.1.44' // Product card mounting loop fields
+        versionCode 132
+        versionName '2.1.45' // Product card mounting loop fields
     }
     buildTypes {
         release {
