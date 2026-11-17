@@ -18,8 +18,8 @@ android {
         applicationId 'ua.budivelnyk.ua'
         minSdk 23
         targetSdk 35
-        versionCode 134
-        versionName '2.1.47' // Fix archive photo save and document scanning
+        versionCode 135
+        versionName '2.1.48' // Recover visible login screen if session startup stalls
     }
     buildTypes {
         release {
