@@ -10,6 +10,7 @@ import android.print.PageRange;
 import android.print.pdf.PrintedPdfDocument;
 import android.os.CancellationSignal;
 import android.content.Intent;
+import android.content.IntentSender;
 import android.content.ContentValues;
 import android.provider.MediaStore;
 import android.content.ClipData;
@@ -32,6 +33,9 @@ import android.webkit.WebViewClient;
 import androidx.core.content.FileProvider;
 
 import com.googlecode.tesseract.android.TessBaseAPI;
+import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions;
+import com.google.mlkit.vision.documentscanner.GmsDocumentScanning;
+import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult;
 import com.tom_roush.pdfbox.android.PDFBoxResourceLoader;
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 import com.tom_roush.pdfbox.text.PDFTextStripper;
@@ -68,6 +72,7 @@ public class MainActivity extends Activity {
     private static final int BACKUP_EXPORT=1402;
     private static final int BACKUP_IMPORT=1403;
     private static final int SERIES_IMPORT=1404;
+    private static final int DOCUMENT_SCAN=1405;
     private SeriesCatalogManager seriesCatalogManager;
     private String pendingBackupJson="{}";
     private AndroidStorage androidStorage;
@@ -78,6 +83,9 @@ public class MainActivity extends Activity {
     private DownloadManager downloadManager;
     private long updateDownloadId=-1;
     private BroadcastReceiver updateReceiver;
+    private String pendingScanFolder="drawings";
+    private String pendingScanTitle="Скан документа";
+    private String pendingScanNotes="";
 
     private File folder(String category) {
         File root=getExternalFilesDir(Environment.DIRECTORY_PICTURES);
@@ -731,6 +739,31 @@ public class MainActivity extends Activity {
                 return "OK";
             } catch(Exception e){return "Помилка збереження: "+e.getMessage();}
         }
+
+        @JavascriptInterface public String startDocumentScan(String folderName,String title,String notes) {
+            if(!"drawings".equals(folderName) && !"products".equals(folderName)) return "Невідома папка для сканування.";
+            pendingScanFolder=folderName;
+            pendingScanTitle=(title==null || title.trim().isEmpty())?"Скан документа":title.trim();
+            pendingScanNotes=notes==null?"":notes.trim();
+            runOnUiThread(() -> {
+                try {
+                    GmsDocumentScannerOptions options=new GmsDocumentScannerOptions.Builder()
+                        .setGalleryImportAllowed(true)
+                        .setPageLimit(50)
+                        .setResultFormats(GmsDocumentScannerOptions.RESULT_FORMAT_JPEG,GmsDocumentScannerOptions.RESULT_FORMAT_PDF)
+                        .setScannerMode(GmsDocumentScannerOptions.SCANNER_MODE_FULL)
+                        .build();
+                    GmsDocumentScanning.getClient(options).getStartScanIntent(MainActivity.this)
+                        .addOnSuccessListener(sender -> {
+                            try { startIntentSenderForResult(sender,DOCUMENT_SCAN,null,0,0,0); }
+                            catch(IntentSender.SendIntentException e) { notifyDocumentScanError("Не вдалося відкрити сканер: "+e.getMessage()); }
+                        })
+                        .addOnFailureListener(e -> notifyDocumentScanError("Сканер недоступний: "+e.getMessage()));
+                } catch(Exception e) { notifyDocumentScanError("Помилка запуску сканера: "+e.getMessage()); }
+            });
+            return "SCAN_STARTED";
+        }
+
         @JavascriptInterface public String shareArchiveImage(String dataUrl, String title) {
             try {
                 byte[] raw = decodeData(dataUrl);
@@ -1114,6 +1147,46 @@ public class MainActivity extends Activity {
             }
             return;
         }
+
+        if(r==DOCUMENT_SCAN) {
+            if(c==RESULT_OK && d!=null) {
+                final GmsDocumentScanningResult scan=GmsDocumentScanningResult.fromActivityResultIntent(d);
+                new Thread(() -> {
+                    JSONObject result=new JSONObject();
+                    int savedPages=0;
+                    String pdfName="";
+                    try {
+                        if(scan==null) throw new IOException("Сканер не повернув результат.");
+                        List<GmsDocumentScanningResult.Page> pages=scan.getPages();
+                        if(pages!=null) {
+                            int total=pages.size(),pageIndex=0;
+                            for(GmsDocumentScanningResult.Page page:pages) {
+                                pageIndex++;
+                                Uri pageUri=page.getImageUri();
+                                if(pageUri==null) continue;
+                                String fileName=saveScannedPage(pageUri,pageIndex,total);
+                                if(fileName!=null) savedPages++;
+                            }
+                        }
+                        GmsDocumentScanningResult.Pdf pdf=scan.getPdf();
+                        if(pdf!=null && pdf.getUri()!=null) pdfName=saveScannedPdf(pdf.getUri());
+                        if(savedPages==0 && pdfName.isEmpty()) throw new IOException("Не вдалося зберегти сторінки сканування.");
+                        result.put("ok",true);
+                        result.put("pages",savedPages);
+                        result.put("pdf",pdfName);
+                        result.put("folder",pendingScanFolder);
+                        result.put("message","Сканування збережено.");
+                    } catch(Exception e) {
+                        try { result.put("ok",false); result.put("message","Помилка збереження скану: "+e.getMessage()); } catch(Exception ignored) {}
+                    }
+                    notifyDocumentScanResult(result);
+                }).start();
+            } else {
+                notifyDocumentScanError("Сканування скасовано.");
+            }
+            return;
+        }
+
         if(r==PICK&&callback!=null){
             Uri[] u=null;
             if(c==RESULT_OK&&d!=null){
@@ -1124,6 +1197,54 @@ public class MainActivity extends Activity {
             callback.onReceiveValue(u);callback=null;
         }
     }
+
+    private String saveScannedPage(Uri uri,int page,int total) throws Exception {
+        String base=safeName(pendingScanTitle).replaceAll("\\.jpg$","");
+        String name=System.currentTimeMillis()+"_"+base+"_page_"+String.format(Locale.US,"%02d",page)+".jpg";
+        File dir=folder(pendingScanFolder),target=new File(dir,name);
+        try(InputStream in=getContentResolver().openInputStream(uri);OutputStream out=new FileOutputStream(target)) {
+            if(in==null) throw new IOException("Не вдалося прочитати сторінку "+page);
+            byte[] buffer=new byte[16384];int count;
+            while((count=in.read(buffer))>0) out.write(buffer,0,count);
+        }
+        JSONObject meta=new JSONObject();
+        meta.put("title",pendingScanTitle+(total>1?" — сторінка "+page:""));
+        meta.put("notes",pendingScanNotes);
+        meta.put("date",new SimpleDateFormat("dd.MM.yyyy HH:mm",Locale.getDefault()).format(new Date()));
+        meta.put("fileName",name);
+        try(FileOutputStream out=new FileOutputStream(new File(dir,name+".json"))) {
+            out.write(meta.toString().getBytes(StandardCharsets.UTF_8));
+        }
+        return name;
+    }
+    private String saveScannedPdf(Uri uri) throws Exception {
+        String base=safeName(pendingScanTitle);
+        if(!base.toLowerCase(Locale.ROOT).endsWith(".pdf")) base+=".pdf";
+        String name=System.currentTimeMillis()+"_"+base;
+        File target=new File(pdfFolder(),name);
+        try(InputStream in=getContentResolver().openInputStream(uri);OutputStream out=new FileOutputStream(target)) {
+            if(in==null) throw new IOException("Не вдалося прочитати PDF скану.");
+            byte[] buffer=new byte[16384];int count;
+            while((count=in.read(buffer))>0) out.write(buffer,0,count);
+        }
+        JSONObject meta=new JSONObject();
+        meta.put("fileName",name);meta.put("title",pendingScanTitle);meta.put("notes",pendingScanNotes);
+        meta.put("date",new SimpleDateFormat("dd.MM.yyyy HH:mm",Locale.getDefault()).format(new Date()));
+        try(FileOutputStream out=new FileOutputStream(new File(pdfFolder(),name+".json"))) {
+            out.write(meta.toString().getBytes(StandardCharsets.UTF_8));
+        }
+        return name;
+    }
+    private void notifyDocumentScanError(String message) {
+        JSONObject result=new JSONObject();
+        try { result.put("ok",false);result.put("message",message==null?"Помилка сканування":message); } catch(Exception ignored) {}
+        notifyDocumentScanResult(result);
+    }
+    private void notifyDocumentScanResult(JSONObject result) {
+        if(webView!=null) webView.post(() -> webView.evaluateJavascript(
+            "window.onNativeDocumentScanResult&&window.onNativeDocumentScanResult("+JSONObject.quote(result.toString())+")",null));
+    }
+
     private void notifyBackup(String message, boolean success) {
         if(webView!=null) webView.post(()->webView.evaluateJavascript("window.onNativeBackupResult&&window.onNativeBackupResult("+JSONObject.quote(message)+","+success+")",null));
     }
