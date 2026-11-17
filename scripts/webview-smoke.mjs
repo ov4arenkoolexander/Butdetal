@@ -20,6 +20,7 @@ try {
 
   const appUrl = pathToFileURL(resolve('app/src/main/assets/index.html')).href;
   await page.goto(appUrl, { waitUntil: 'load' });
+  await page.locator('#authGate').waitFor({ state: 'visible', timeout: 8000 });
 
   // Capture the actual touch/click path, including the element under the tap point.
   await page.evaluate(() => {
