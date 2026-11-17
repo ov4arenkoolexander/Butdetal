@@ -18,8 +18,8 @@ android {
         applicationId 'ua.budivelnyk.ua'
         minSdk 23
         targetSdk 35
-        versionCode 136
-        versionName '2.1.49' // Fix stray async token that prevented WebView startup
+        versionCode 137
+        versionName '2.1.50' // Add styled camera and gallery scan actions
     }
     buildTypes {
         release {
