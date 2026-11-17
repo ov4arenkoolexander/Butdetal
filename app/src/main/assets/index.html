@@ -105,14 +105,14 @@ footer{text-align:center;color:#8390a0;font-size:12px;padding:24px}
 <div class="home-module-menu">
 <div class="home-module-heading"><div><span class="eyebrow">ГОЛОВНЕ МЕНЮ</span><h2>BUTDETAL</h2><p>Усі основні інструменти в одному місці</p></div><span class="home-module-mark">B<span>+</span></span></div>
 <div class="home-module-grid">
-<button class="home-module" onclick="showTab('learning',document.querySelector('.tabs .tab[onclick*=\\'learning\\']'));renderStudyCards();switchStudyMode('materials')"><span class="home-module-icon">▤</span><b>Довідник</b><small>Навчальні матеріали</small></button>
-<button class="home-module" onclick="showTab('catalog',document.querySelector('.tabs .tab[onclick*=\\'catalog\\']'));renderProductCatalog()"><span class="home-module-icon">⬡</span><b>Каталог виробів</b><small>Картки та характеристики</small></button>
-<button class="home-module" onclick="showTab('series',document.querySelector('.tabs .tab[onclick*=\\'series\\']'));loadSeriesCatalog()"><span class="home-module-icon">▧</span><b>Серії та креслення</b><small>Типові серії та сторінки PDF</small></button>
-<button class="home-module" onclick="showTab('formulas',document.querySelector('.tabs .tab[onclick*=\\'formulas\\']'))"><span class="home-module-icon">∑</span><b>Розрахунки</b><small>Формули та бетон</small></button>
-<button class="home-module" onclick="showTab('shiftplan',document.querySelector('.tabs .tab[onclick*=\\'shiftplan\\']'));renderShiftPlan()"><span class="home-module-icon">▣</span><b>Завдання на зміну</b><small>Планування робіт</small></button>
-<button class="home-module" onclick="showTab('archive',document.querySelector('.tabs .tab[onclick*=\\'archive\\']'))"><span class="home-module-icon">▥</span><b>Фото й креслення</b><small>Архів підприємства</small></button>
-<button class="home-module" onclick="showTab('sync',document.querySelector('.tabs .tab[onclick*=\\'sync\\']'))"><span class="home-module-icon">⟳</span><b>Синхронізація</b><small>Обмін даними</small></button>
-<button class="home-module" onclick="showTab('journal',document.querySelector('.tabs .tab[onclick*=\\'journal\\']'));loadJournal()"><span class="home-module-icon">☷</span><b>Журнал</b><small>Історія змін</small></button>
+<button class="home-module" onclick="navTo('learning');renderStudyCards();switchStudyMode('materials')"><span class="home-module-icon">▤</span><b>Довідник</b><small>Навчальні матеріали</small></button>
+<button class="home-module" onclick="navTo('catalog');renderProductCatalog()"><span class="home-module-icon">⬡</span><b>Каталог виробів</b><small>Картки та характеристики</small></button>
+<button class="home-module" onclick="navTo('series');loadSeriesCatalog()"><span class="home-module-icon">▧</span><b>Серії та креслення</b><small>Типові серії та сторінки PDF</small></button>
+<button class="home-module" onclick="navTo('formulas')"><span class="home-module-icon">∑</span><b>Розрахунки</b><small>Формули та бетон</small></button>
+<button class="home-module" onclick="navTo('shiftplan');renderShiftPlan()"><span class="home-module-icon">▣</span><b>Завдання на зміну</b><small>Планування робіт</small></button>
+<button class="home-module" onclick="navTo('archive')"><span class="home-module-icon">▥</span><b>Фото й креслення</b><small>Архів підприємства</small></button>
+<button class="home-module" onclick="navTo('sync')"><span class="home-module-icon">⟳</span><b>Синхронізація</b><small>Обмін даними</small></button>
+<button class="home-module" onclick="navTo('journal');loadJournal()"><span class="home-module-icon">☷</span><b>Журнал</b><small>Історія змін</small></button>
 </div>
 <div class="home-module-footer">Додаткові розділи залишаються доступними у верхньому меню</div>
 </div>
