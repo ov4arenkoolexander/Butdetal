@@ -18,8 +18,8 @@ android {
         applicationId 'ua.budivelnyk.ua'
         minSdk 23
         targetSdk 35
-        versionCode 135
-        versionName '2.1.48' // Recover visible login screen if session startup stalls
+        versionCode 136
+        versionName '2.1.49' // Fix stray async token that prevented WebView startup
     }
     buildTypes {
         release {
