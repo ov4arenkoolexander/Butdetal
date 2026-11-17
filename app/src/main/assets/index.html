@@ -958,7 +958,7 @@ async function checkAppUpdate(){
   const response=await fetch('https://api.github.com/repos/'+repo+'/releases?per_page=100',{headers:{'Accept':'application/vnd.github+json'},cache:'no-store'});
   if(!response.ok)throw Error('GitHub API: HTTP '+response.status);
   const releases=await response.json();
-  const versions=(Array.isArray(releases)?releases:[]).filter(r=>/^v3\\./i.test(String(r.tag_name||''))&&(r.assets||[]).some(a=>String(a.name||'').toLowerCase().endsWith('.apk')));
+  const versions=(Array.isArray(releases)?releases:[]).filter(r=>/^v3\./i.test(String(r.tag_name||''))&&(r.assets||[]).some(a=>String(a.name||'').toLowerCase().endsWith('.apk')));
   versions.sort((a,b)=>{
    const aa=String(a.tag_name||'').replace(/^v/i,'').split('.').map(Number);
    const bb=String(b.tag_name||'').replace(/^v/i,'').split('.').map(Number);
