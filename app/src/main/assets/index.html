@@ -951,28 +951,36 @@ renderArchive();renderProductCatalog();renderExcelReferenceData();setTimeout(()=
 async function checkAppUpdate(){
  const box=document.getElementById('updateStatus');
  const old=document.getElementById('updateDownload');if(old)old.remove();
- box.textContent='Автоматично перевіряю нову версію BUTDETAL…';
+ box.textContent='Перевіряю оновлення BUTDETAL 3.0…';
  const repo='ov4arenkoolexander/Butdetal';
  try{
-  const response=await fetch('https://api.github.com/repos/'+repo+'/releases/latest',{headers:{'Accept':'application/vnd.github+json'},cache:'no-store'});
-  if(response.status===404){box.textContent='Поки що немає опублікованих оновлень.';return;}
+  // Version 3 uses its own prerelease channel. Stable 2.x never sees these APKs.
+  const response=await fetch('https://api.github.com/repos/'+repo+'/releases?per_page=100',{headers:{'Accept':'application/vnd.github+json'},cache:'no-store'});
   if(!response.ok)throw Error('GitHub API: HTTP '+response.status);
-  const release=await response.json();
-  const asset=(release.assets||[]).find(a=>a.name.toLowerCase().endsWith('.apk'));
-  if(!asset){box.textContent='Реліз знайдено, але APK ще не опубліковано.';return;}
+  const releases=await response.json();
+  const versions=(Array.isArray(releases)?releases:[]).filter(r=>/^v3\\./i.test(String(r.tag_name||''))&&(r.assets||[]).some(a=>String(a.name||'').toLowerCase().endsWith('.apk')));
+  versions.sort((a,b)=>{
+   const aa=String(a.tag_name||'').replace(/^v/i,'').split('.').map(Number);
+   const bb=String(b.tag_name||'').replace(/^v/i,'').split('.').map(Number);
+   for(let i=0;i<Math.max(aa.length,bb.length);i++){const d=(aa[i]||0)-(bb[i]||0);if(d)return d;}
+   return 0;
+  });
+  const release=versions[versions.length-1];
+  if(!release){box.textContent='Оновлень BUTDETAL 3.0 поки немає.';return;}
+  const asset=(release.assets||[]).find(a=>String(a.name||'').toLowerCase().endsWith('.apk'));
   const current=(window.AndroidStorage&&AndroidStorage.getAppVersion)?AndroidStorage.getAppVersion():'0';
   const latest=String(release.tag_name||'').replace(/^v/i,'');
-  const cmp=(a,b)=>{const aa=a.split('.').map(Number),bb=b.split('.').map(Number);for(let i=0;i<Math.max(aa.length,bb.length);i++){let d=(aa[i]||0)-(bb[i]||0);if(d)return d;}return 0};
-  if(cmp(latest,current)<=0){box.textContent='У тебе встановлена актуальна версія BUTDETAL '+current+'.';return;}
-  const a=document.createElement('button');a.id='updateDownload';a.className='btn';a.style.display='block';a.style.width='100%';a.textContent='Завантажити й встановити BUTDETAL '+latest;
+  const cmp=(a,b)=>{const aa=a.split('.').map(Number),bb=b.split('.').map(Number);for(let i=0;i<Math.max(aa.length,bb.length);i++){const d=(aa[i]||0)-(bb[i]||0);if(d)return d;}return 0};
+  if(cmp(latest,current)<=0){box.textContent='У тебе встановлена актуальна версія BUTDETAL 3.0 '+current+'.';return;}
+  const a=document.createElement('button');a.id='updateDownload';a.className='btn';a.style.display='block';a.style.width='100%';a.textContent='Завантажити й встановити BUTDETAL 3.0 '+latest;
   a.onclick=()=>{
    if(!window.AndroidStorage||!AndroidStorage.downloadAndInstall){box.textContent='Автоматичне встановлення доступне в Android-застосунку.';return;}
    const r=AndroidStorage.downloadAndInstall(asset.browser_download_url);
-   if(r==='ДОЗВІЛ_ПОТРІБЕН')box.textContent='Дозволь встановлення BUTDETAL у налаштуваннях Android, повернись у застосунок і натисни кнопку ще раз.';
+   if(r==='ДОЗВІЛ_ПОТРІБЕН')box.textContent='Дозволь встановлення BUTDETAL 3.0 у налаштуваннях Android, повернись у застосунок і натисни кнопку ще раз.';
    else if(r==='ЗАВАНТАЖЕННЯ_ПОЧАТО')box.textContent='Завантажую APK. Після завершення відкриється системне встановлення.';
    else box.textContent=r;
   };
-  box.textContent='Доступне оновлення '+latest+'. Поточна версія: '+current+'.';box.after(a);
+  box.textContent='Доступне оновлення BUTDETAL 3.0 '+latest+'. Поточна версія: '+current+'.';box.after(a);
  }catch(e){box.textContent='Не вдалося перевірити оновлення: '+(e&&e.message?e.message:'помилка мережі');console.warn('Update check:',e);}
 }
 window.onNativeUpdateResult=function(message){const box=document.getElementById('updateStatus');if(box)box.textContent=message;};
