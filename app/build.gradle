@@ -15,11 +15,11 @@ android {
     namespace 'ua.budivelnyk.ua'
     compileSdk 35
     defaultConfig {
-        applicationId 'ua.budivelnyk.ua'
+        applicationId 'ua.budivelnyk.butdetal3'
         minSdk 23
         targetSdk 35
-        versionCode 131
-        versionName '2.1.44' // Product card mounting loop fields
+        versionCode 300
+        versionName '3.0.0' // BUTDETAL 3.0 separate install and update channel
     }
     buildTypes {
         release {
