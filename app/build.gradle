@@ -18,8 +18,8 @@ android {
         applicationId 'ua.budivelnyk.ua'
         minSdk 23
         targetSdk 35
-        versionCode 130
-        versionName '2.1.43' // Series sync folder-name reconciliation
+        versionCode 131
+        versionName '2.1.44' // Product card mounting loop fields
     }
     buildTypes {
         release {
