@@ -18,8 +18,8 @@ android {
         applicationId 'ua.budivelnyk.ua'
         minSdk 23
         targetSdk 35
-        versionCode 139
-        versionName '2.2.0' // Feature release: camera and gallery document scanning
+        versionCode 140
+        versionName '2.2.1' // Image viewer: pinch zoom and pan
     }
     buildTypes {
         release {
