@@ -59,8 +59,16 @@ if 'getAppVersion' not in java or 'downloadAndInstall' not in java:
     sys.exit(1)
 
 index = (ROOT / 'app/src/main/assets/index.html').read_text(encoding='utf-8')
-if 'releases/latest' not in index or 'ov4arenkoolexander/Butdetal' not in index:
-    print('ERROR: latest-release update endpoint missing or points to the wrong repository')
+is_v3 = version.group(1).startswith('3.')
+if 'ov4arenkoolexander/Butdetal' not in index:
+    print('ERROR: update endpoint points to the wrong repository')
+    sys.exit(1)
+if is_v3:
+    if 'releases?per_page=100' not in index or '/^v3\\./i' not in index:
+        print('ERROR: BUTDETAL 3.x prerelease update channel is missing')
+        sys.exit(1)
+elif 'releases/latest' not in index:
+    print('ERROR: stable latest-release update endpoint is missing')
     sys.exit(1)
 
 if 'createButdetalBackup' not in index or 'restoreButdetalBackup' not in index:
