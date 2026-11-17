@@ -18,8 +18,8 @@ android {
         applicationId 'ua.budivelnyk.ua'
         minSdk 23
         targetSdk 35
-        versionCode 137
-        versionName '2.1.50' // Add styled camera and gallery scan actions
+        versionCode 138
+        versionName '2.1.51' // Process gallery photos through ML Kit document scanner
     }
     buildTypes {
         release {
