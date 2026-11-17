@@ -18,8 +18,8 @@ android {
         applicationId 'ua.budivelnyk.butdetal3'
         minSdk 23
         targetSdk 35
-        versionCode 300
-        versionName '3.0.0' // BUTDETAL 3.0 separate install and update channel
+        versionCode 301
+        versionName '3.0.1' // BUTDETAL 3.0 separate install and update channel
     }
     buildTypes {
         release {
