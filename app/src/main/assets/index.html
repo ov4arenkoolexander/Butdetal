@@ -868,14 +868,25 @@ function productCardBackground(x){const photo=linkedFiles('products',x.id)[0],ur
 function productSeriesLabel(x){return x.seriesType==='serial'?'Серійна':x.seriesType==='nonserial'?'Несерійна':'Серійність не вказана'}
 function productDisplayValue(value){return value===null||value===undefined?'':String(value).trim()}
 function productMetaChip(label,value,suffix=''){const v=productDisplayValue(value);if(!v)return '';return '<span class="product-meta-chip"><b>'+safeText(label)+':</b> '+safeText(v+suffix)+'</span>'}
-function renderProductCatalog(){
- let q=(document.getElementById('productSearch')?.value||'').trim(),filter=document.getElementById('productSeriesFilter')?.value||'all';
-
- let a=productRecords().filter(x=>productSearchMatches(x,q)&&(filter==='all'||(filter==='unset'?!x.seriesType:x.seriesType===filter)));
+let productCatalogRenderLimit=40;
+function renderProductCatalog(loadMore=false){
+ if(loadMore)productCatalogRenderLimit+=40;else productCatalogRenderLimit=40;
+ const q=(document.getElementById('productSearch')?.value||'').trim();
+ const filter=document.getElementById('productSeriesFilter')?.value||'all';
+ const records=productRecords();
+ let a=records.filter(x=>productSearchMatches(x,q)&&(filter==='all'||(filter==='unset'?!x.seriesType:x.seriesType===filter)));
  if(normalizeProductSearch(q))a.sort((x,y)=>productMatchScore(y,q)-productMatchScore(x,q));
- let el=document.getElementById('productCatalog');if(!el)return;
+ const el=document.getElementById('productCatalog');if(!el)return;
  if(!a.length){el.innerHTML='<p class="muted">'+(q?'За цим запитом виробів не знайдено.':'Каталог поки порожній. Додай перший виріб.')+'</p>';return}
- el.innerHTML=a.map(x=>{
+ // Читаємо фотоархів лише один раз за відкриття/оновлення каталогу, а не двічі для кожної картки.
+ const photosByProduct=new Map();
+ for(const file of loadArchive('products')){
+  for(const id of archiveProductIds(file)){
+   if(!photosByProduct.has(id))photosByProduct.set(id,file);
+  }
+ }
+ const visible=a.slice(0,productCatalogRenderLimit);
+ const cards=visible.map(x=>{
   const mark=productDisplayValue(x.mark),name=productDisplayValue(x.name),type=productDisplayValue(x.type);
   const title=mark||name||'Без назви';
   const subtitleParts=[];
@@ -895,10 +906,12 @@ function renderProductCatalog(){
   ].filter(Boolean).join('');
   const chips=meta?'<div class="product-card-meta">'+meta+'</div>':'';
   const cardId=String(x.id||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;');
-  const photo=linkedFiles('products',x.id)[0]||null;
-  const photoHtml=photo&&photo.dataUrl?'<img class="product-card-photo" src="'+photo.dataUrl+'" alt="Фото виробу" data-product-id="'+cardId+'" onclick="openProductPhoto(this.dataset.productId)">':'<div class="product-card-photo-placeholder" aria-hidden="true"></div>';
-  return '<article class="item product-visual-card" style="'+productCardBackground(x)+'"><div class="product-visual-content"><div class="product-card-layout"><div><div class="product-card-top"><b>'+safeText(title)+'</b>'+badge+'</div>'+subtitle+chips+'<div class="product-card-actions"><button type="button" class="btn" data-product-id="'+cardId+'" onclick="viewProductCard(this.dataset.productId)">Відкрити картку</button></div></div>'+photoHtml+'</div></div></article>';
+  const photo=photosByProduct.get(String(x.id))||null;
+  const photoHtml=photo&&photo.dataUrl?'<img class="product-card-photo" loading="lazy" decoding="async" src="'+photo.dataUrl+'" alt="Фото виробу" data-product-id="'+cardId+'" onclick="openProductPhoto(this.dataset.productId)">':'<div class="product-card-photo-placeholder" aria-hidden="true"></div>';
+  return '<article class="item product-visual-card"><div class="product-visual-content"><div class="product-card-layout"><div><div class="product-card-top"><b>'+safeText(title)+'</b>'+badge+'</div>'+subtitle+chips+'<div class="product-card-actions"><button type="button" class="btn" data-product-id="'+cardId+'" onclick="viewProductCard(this.dataset.productId)">Відкрити картку</button></div></div>'+photoHtml+'</div></div></article>';
  }).join('');
+ const more=a.length-visible.length;
+ el.innerHTML=cards+(more>0?'<button type="button" class="btn secondary" onclick="renderProductCatalog(true)">Показати ще 40 ('+more+' залишилось)</button>':'');
 }
 let productCatalogScrollY=0;function showPage(id,remember=true){const current=document.querySelector('.page:not(.hidden)')?.id;if(current==='catalog')productCatalogScrollY=window.scrollY;if(remember)rememberButdetalNavigation('page',id);document.querySelectorAll('.page').forEach(x=>x.classList.add('hidden'));const page=document.getElementById(id);if(page)page.classList.remove('hidden');document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));window.scrollTo(0,id==='catalog'?productCatalogScrollY:0)}
 function newProductCard(){['productId','productName','productMark','productSeries','productDrawingNumber','productAliases','productType','productDimensions','productVolume','productConcreteGrade','productRebar','productLoopCount','productLoopDiameter','productNotes'].forEach(id=>document.getElementById(id).value='');document.getElementById('productSeriesType').value='';document.getElementById('productPhotos').value='';document.getElementById('productDrawings').value='';document.getElementById('productEditorTitle').textContent='Нова картка виробу';document.getElementById('productEditorStatus').textContent='';const q=document.getElementById('manualProductSeriesSearch');if(q)q.value='';const results=document.getElementById('manualProductSeriesResults');if(results)results.textContent='Введи запит або переглянь усі серії.';showPage('productEditor')}
