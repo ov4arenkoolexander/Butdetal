@@ -18,8 +18,8 @@ android {
         applicationId 'ua.budivelnyk.ua'
         minSdk 23
         targetSdk 35
-        versionCode 143
-        versionName '2.2.4' // Reliable series sync
+        versionCode 144
+        versionName '2.2.5' // Faster product catalog
     }
     buildTypes {
         release {
