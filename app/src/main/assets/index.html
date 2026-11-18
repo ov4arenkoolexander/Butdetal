@@ -570,7 +570,7 @@ async function syncSeriesCatalog(){
  if(!session){showSeriesStatus('Спочатку увійди до BUTDETAL.',false);return}
  const bridge=['listSeriesSyncFolders','createSeriesSyncZip','readSeriesSyncZipChunkBase64','beginSeriesSyncReceive','appendSeriesSyncReceiveChunk','finishSeriesSyncReceive','deleteSeriesSyncTempFile','getKnownSeriesSyncFolders','setKnownSeriesSyncFolders','deleteSeriesSyncFolder'];
  if(!seriesNative()||bridge.some(k=>typeof AndroidStorage[k]!=='function')){showSeriesStatus('Синхронізація папок серій доступна після оновлення Android-застосунку.',false);return}
- const cfg=getSbConfig(),prefix='shared/series/folders/',headers={apikey:cfg.key,Authorization:'Bearer '+session.access_token},chunkBytes=40*1024*1024,bridgeBytes=8*1024*1024;
+ const cfg=getSbConfig(),prefix='shared/series/folders/',headers={apikey:cfg.key,Authorization:'Bearer '+session.access_token},chunkBytes=8*1024*1024,bridgeBytes=4*1024*1024;
  showSeriesStatus('Зіставляю локальні та серверні папки серій…',true);
  try{
   const localFolders=JSON.parse(AndroidStorage.listSeriesSyncFolders()||'[]'),localNameByKey=new Map();
@@ -594,7 +594,7 @@ async function syncSeriesCatalog(){
   // Назва папки може бути змінена або локалізована. Якщо стабільний ключ збігається,
   // вважаємо локальну назву актуальною та оновлюємо відомий стан без видалення файлів.
   const listUrl=cfg.url.replace(/\/$/,'')+'/storage/v1/object/list/butdetal-archive',remoteItems=[],pageSize=1000;
-  for(let offset=0;;offset+=pageSize){const r=await fetch(listUrl,{method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({prefix:prefix,limit:pageSize,offset:offset,sortBy:{column:'name',order:'asc'}})});if(!r.ok)throw Error('Не вдалося отримати список серій із сервера (HTTP '+r.status+').');const page=await r.json();if(!Array.isArray(page))throw Error('Сервер повернув некоректний список папок серій.');remoteItems.push(...page);if(page.length<pageSize)break}
+  for(let offset=0;;offset+=pageSize){const r=await seriesNetworkFetch(listUrl,{method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({prefix:prefix,limit:pageSize,offset:offset,sortBy:{column:'name',order:'asc'}})},'Отримання списку папок серій');if(!r.ok)throw Error('Не вдалося отримати список серій із сервера (HTTP '+r.status+').');const page=await r.json();if(!Array.isArray(page))throw Error('Сервер повернув некоректний список папок серій.');remoteItems.push(...page);if(page.length<pageSize)break}
   const remoteByBase=new Map();
   for(const item of remoteItems){
    const objectName=String(item.name||'');
@@ -1201,8 +1201,20 @@ async function syncButdetalRecords(){
 function localArchiveItems(folder){if(nativeArchive())return JSON.parse(AndroidStorage.listImages(folder)||'[]');return loadArchive(folder)}
 function localPdfItems(){if(window.AndroidStorage&&AndroidStorage.listPdfs)return JSON.parse(AndroidStorage.listPdfs()||'[]');try{return JSON.parse(localStorage.getItem('bua_pdf')||'[]')}catch(e){return []}}
 function storageSafeObjectName(name){const bytes=new TextEncoder().encode(String(name||''));let out='';for(const b of bytes)out+=b.toString(16).padStart(2,'0');return out||'file'}
-async function storageUpload(path,blob,mime){const cfg=getSbConfig(),s=await ensureFreshButdetalSession(),url=cfg.url+'/storage/v1/object/butdetal-archive/'+path.split('/').map(encodeURIComponent).join('/');const r=await fetch(url,{method:'POST',headers:{apikey:cfg.key,Authorization:'Bearer '+s.access_token,'Content-Type':mime,'x-upsert':'true'},body:blob});if(!r.ok){let j={};try{j=await r.json()}catch(e){}throw Error(j.message||j.error||'Storage upload HTTP '+r.status)}}
-async function storageDownload(path){const cfg=getSbConfig(),s=await ensureFreshButdetalSession(),url=cfg.url+'/storage/v1/object/butdetal-archive/'+String(path||'').split('/').map(encodeURIComponent).join('/');const r=await fetch(url,{headers:{apikey:cfg.key,Authorization:'Bearer '+s.access_token}});if(!r.ok){let detail={};try{detail=await r.json()}catch(e){}const missing=(r.status===400||r.status===404)&&(detail.code==='NoSuchKey'||detail.error==='not_found'||Number(detail.httpStatusCode)===404);if(missing)return null;throw Error('Не вдалося завантажити файл '+String(path||'')+' (HTTP '+r.status+'): '+(detail.message||detail.error||detail.code||'помилка Storage'));}return await r.blob()}
+async function seriesNetworkFetch(url,options,label){
+ let lastError=null;
+ for(let attempt=0;attempt<4;attempt++){
+  try{
+   const response=await fetch(url,options);
+   if(response.ok||![408,425,429,500,502,503,504].includes(response.status))return response;
+   lastError=Error((label||'Запит до сервера')+' HTTP '+response.status);
+  }catch(e){lastError=e}
+  if(attempt<3)await new Promise(resolve=>setTimeout(resolve,700*Math.pow(2,attempt)));
+ }
+ throw Error((label||'Запит до сервера')+': '+(lastError&&lastError.message?lastError.message:'Failed to fetch')+' (після 4 спроб)');
+}
+async function storageUpload(path,blob,mime){const cfg=getSbConfig(),s=await ensureFreshButdetalSession(),url=cfg.url+'/storage/v1/object/butdetal-archive/'+path.split('/').map(encodeURIComponent).join('/');const r=await seriesNetworkFetch(url,{method:'POST',headers:{apikey:cfg.key,Authorization:'Bearer '+s.access_token,'Content-Type':mime,'x-upsert':'true'},body:blob},'Завантаження '+path);if(!r.ok){let j={};try{j=await r.json()}catch(e){}throw Error(j.message||j.error||'Storage upload HTTP '+r.status)}}
+async function storageDownload(path){const cfg=getSbConfig(),s=await ensureFreshButdetalSession(),url=cfg.url+'/storage/v1/object/butdetal-archive/'+String(path||'').split('/').map(encodeURIComponent).join('/');const r=await seriesNetworkFetch(url,{headers:{apikey:cfg.key,Authorization:'Bearer '+s.access_token}},'Завантаження '+path);if(!r.ok){let detail={};try{detail=await r.json()}catch(e){}const missing=(r.status===400||r.status===404)&&(detail.code==='NoSuchKey'||detail.error==='not_found'||Number(detail.httpStatusCode)===404);if(missing)return null;throw Error('Не вдалося завантажити файл '+String(path||'')+' (HTTP '+r.status+'): '+(detail.message||detail.error||detail.code||'помилка Storage'));}return await r.blob()}
 function dataUrlBlob(dataUrl){const a=dataUrl.split(',');const mime=(a[0].match(/:(.*?);/)||[])[1]||'application/octet-stream';const raw=atob(a[1]||'');const bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);return new Blob([bytes],{type:mime})}
 function blobDataUrl(blob){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(Error('Не вдалося прочитати файл'));r.readAsDataURL(blob)})}
 async function saveCloudMeta(m){await sbRequest('/rest/v1/archive_files?on_conflict=object_path',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(m)})}
