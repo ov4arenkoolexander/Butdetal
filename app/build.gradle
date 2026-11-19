@@ -18,8 +18,8 @@ android {
         applicationId 'ua.budivelnyk.ua'
         minSdk 23
         targetSdk 35
-        versionCode 146
-        versionName '2.2.7' // Excel shift plan import with preview
+        versionCode 147
+        versionName '2.2.8' // Fix active shift plan renderer and Excel import
     }
     buildTypes {
         release {
