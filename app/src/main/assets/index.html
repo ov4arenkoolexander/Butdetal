@@ -382,39 +382,81 @@ function shiftPlanMetaChange(key,value){
  const m=d.meta;if(m.date&&m.shift&&(key==='date'||key==='shift')){const k=shiftPlanKey()+'_'+m.date+'_'+m.shift;shiftPlanLoadedKeys.delete(k);loadShiftPlanFromCloud().then(()=>{shiftPlanLoadedKeys.add(k);renderShiftPlan()}).catch(e=>{const st=document.getElementById('shiftPlanStatus');if(st)st.textContent=e.message||e})}
 }
 function shiftPlanNormalizeName(v){return String(v||'').toLocaleLowerCase('uk-UA').replace(/[’'ʻ]/g,'').replace(/[×х]/g,'x').replace(/[^\p{L}\p{N}]+/gu,' ').trim().replace(/\s+/g,' ')}
-function shiftPlanSplitPlugSuffix(v){const name=String(v||'').trim(),plug=/\sт-а$/i.test(name);return {name:plug?name.replace(/\sт-а$/i,'').trim():name,plug}}
-function importShiftPlanExcel(){
+function shiftPlanSplitPlugSuffix(v){const name=String(v||'').trim(),plug=/\s*т-а$/i.test(name);return {name:plug?name.replace(/\s*т-а$/i,'').trim():name,plug}}
+let pendingShiftPlanImport=null;
+function shiftPlanExcelDate(wb,sheet){
+ const candidates=[sheet?.B4,sheet?.B3,sheet?.B2,sheet?.A4,sheet?.A3,sheet?.A2].filter(Boolean);
+ for(const cell of candidates){
+  let value=cell.v;
+  if(cell.t==='d'&&value instanceof Date&&!isNaN(value))return value.toISOString().slice(0,10);
+  if(typeof value==='number'&&cell.t==='n'){
+   const d=XLSX.SSF.parse_date_code(value);if(d?.y&&d?.m&&d?.d)return d.y+'-'+String(d.m).padStart(2,'0')+'-'+String(d.d).padStart(2,'0');
+  }
+  const text=String(value||'').trim(),m=text.match(/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})$/);
+  if(m)return m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');
+  const iso=text.match(/^(\d{4})-(\d{2})-(\d{2})/);if(iso)return iso[0];
+ }
+ return '';
+}
+function shiftPlanExcelNumber(value){
+ if(value===null||value===undefined||value==='')return null;
+ const n=typeof value==='number'?value:Number(String(value).trim().replace(/\s/g,'').replace(',','.'));
+ return Number.isFinite(n)&&n>=0&&Number.isInteger(n)?n:null;
+}
+function previewShiftPlanExcel(){
  if(!shiftPlanIsAdmin())return;
- const input=document.getElementById('shiftPlanImportFile'),status=document.getElementById('shiftPlanImportStatus'),file=input?.files?.[0];
+ const input=document.getElementById('shiftPlanImportFile'),status=document.getElementById('shiftPlanImportStatus'),preview=document.getElementById('shiftPlanImportPreview'),file=input?.files?.[0];
  if(!file){if(status)status.textContent='Спочатку вибери Excel-файл.';return}
- const meta=readShiftPlan().meta||{};
- if(!meta.date||!meta.shift||!meta.brigade){if(status)status.textContent='Спочатку вкажи дату, номер партії та назву бригади.';return}
  if(!window.XLSX){if(status)status.textContent='Модуль Excel не завантажився.';return}
+ pendingShiftPlanImport=null;if(preview)preview.innerHTML='';
  file.arrayBuffer().then(buffer=>{
   try{
-   const wb=XLSX.read(buffer,{type:'array'}),sheet=wb.Sheets[wb.SheetNames[0]];
+   const wb=XLSX.read(buffer,{type:'array',cellDates:true}),sheet=wb.Sheets[wb.SheetNames[0]];
    if(!sheet)throw Error('У файлі немає аркуша з планом.');
-   const data=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:false}),catalog=productRecords();
-   const lookup=new Map();
-   catalog.forEach(p=>{[p.mark,p.name].filter(Boolean).forEach(n=>{const k=shiftPlanNormalizeName(n);if(k&&!lookup.has(k))lookup.set(k,p)})});
-   const imported=[];
-   data.forEach((line,idx)=>{
-    const name=String(line?.[0]??'').trim(),qtyRaw=String(line?.[1]??'').trim().replace(',','.');
-    if(!name)return;
-    const qty=Number(qtyRaw);
-    if(!Number.isFinite(qty)||qty<0||!/^\d+(?:\\.0+)?$/.test(qtyRaw))return;
-    const variant=shiftPlanSplitPlugSuffix(name),product=lookup.get(shiftPlanNormalizeName(variant.name));
-    imported.push({rowKey:'imp_'+Date.now().toString(36)+'_'+idx+'_'+Math.random().toString(36).slice(2,7),productId:product?String(product.id):'',productLabel:name,qty:String(Math.trunc(qty)),factQty:0,plugVariant:variant.plug?'with_plugs':'without_plugs',baseProductName:variant.name,notInCatalog:!product});
+   const data=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:true});
+   const norm=v=>String(v||'').toLocaleLowerCase('uk-UA').replace(/\s+/g,' ').trim();
+   let headerIndex=-1,nameCol=-1,qtyCol=-1,factCol=-1,customerCol=-1;
+   data.some((line,i)=>{
+    const cells=(line||[]).map(norm),n=cells.findIndex(x=>x.includes('найменування')),q=cells.findIndex(x=>x.includes('план'));
+    if(n>=0&&q>=0){headerIndex=i;nameCol=n;qtyCol=q;factCol=cells.findIndex(x=>x.includes('факт'));customerCol=cells.findIndex(x=>x.includes('замовлення')||x.includes('контрагент'));return true}
+    return false;
    });
-   if(!imported.length)throw Error('Не знайдено рядків із назвою виробу в колонці A та цілою кількістю в колонці B.');
-   if(!confirm('Імпортувати '+imported.length+' рядків для бригади «'+meta.brigade+'»? Поточний список виробів цього плану буде замінено.'))return;
-   const d=readShiftPlan();d.rows=imported;d.manualRows=d.manualRows||[];saveShiftPlanData(d);renderShiftPlan();
-   const unknown=imported.filter(r=>r.notInCatalog);
-   if(status)status.textContent='Імпортовано '+imported.length+' рядків. Нових для каталогу: '+unknown.length+'. '+(unknown.length?'Перевір список нижче та додай ці вироби до каталогу.':'Усі вироби знайдені в каталозі.');
-   const liveStatus=document.getElementById('shiftPlanStatus');if(liveStatus)liveStatus.textContent='Імпортовано '+imported.length+' рядків для бригади «'+meta.brigade+'». Нових для каталогу: '+unknown.length+'.';
-  }catch(e){if(status)status.textContent='Помилка імпорту: '+(e.message||e)}
+   if(headerIndex<0)throw Error('Не знайдено заголовки «Найменування» та «План шт». Перевір перший аркуш.');
+   const catalog=productRecords(),lookup=new Map();
+   catalog.forEach(p=>[p.mark,p.name].filter(Boolean).forEach(n=>{const k=shiftPlanNormalizeName(n);if(k&&!lookup.has(k))lookup.set(k,p)}));
+   const imported=[];
+   data.slice(headerIndex+1).forEach((line,idx)=>{
+    const name=String(line?.[nameCol]??'').trim(),qty=shiftPlanExcelNumber(line?.[qtyCol]);
+    if(!name||norm(name)==='найменування'||qty===null)return;
+    const fact=factCol>=0?shiftPlanExcelNumber(line?.[factCol]):0;
+    const customer=customerCol>=0?String(line?.[customerCol]??'').trim():'';
+    const variant=shiftPlanSplitPlugSuffix(name),product=lookup.get(shiftPlanNormalizeName(variant.name));
+    imported.push({rowKey:'xlsx_'+Date.now().toString(36)+'_'+idx+'_'+imported.length,productId:product?String(product.id):'',productLabel:name,qty:String(qty),factQty:String(fact===null?0:fact),customer,plugVariant:variant.plug?'with_plugs':'without_plugs',baseProductName:variant.name,notInCatalog:!product});
+   });
+   if(!imported.length)throw Error('Під заголовками не знайдено рядків із назвою виробу та цілою кількістю у колонці «План шт».');
+   const date=shiftPlanExcelDate(wb,sheet),unknown=imported.filter(r=>r.notInCatalog).length;
+   pendingShiftPlanImport={rows:imported,date,fileName:file.name,sheetName:wb.SheetNames[0]};
+   const d=readShiftPlan(),dateLabel=date?date.split('-').reverse().join('.'):'не визначена';
+   if(status)status.textContent='Перегляд готовий: '+imported.length+' позицій, дата '+dateLabel+', не знайдено в каталозі '+unknown+'. Перевір дані перед збереженням.';
+   if(preview){
+    preview.innerHTML='<div class="result" style="margin:10px 0">Знайдено '+imported.length+' позицій · '+safeText(dateLabel)+' · '+safeText(file.name)+'</div><div class="shift-plan-editor" style="max-height:420px;overflow:auto"><table style="min-width:760px"><thead><tr><th>№</th><th>Найменування</th><th>План, шт.</th><th>Факт, шт.</th><th>Замовлення / контрагент</th><th>Каталог</th></tr></thead><tbody>'+imported.map((r,i)=>'<tr><td>'+(i+1)+'</td><td>'+safeText(r.productLabel)+'</td><td>'+safeText(r.qty)+'</td><td>'+safeText(r.factQty)+'</td><td>'+safeText(r.customer)+'</td><td>'+(r.notInCatalog?'<span style="color:#ff8b75">Не знайдено</span>':'<span style="color:#70d99a">Знайдено</span>')+'</td></tr>').join('')+'</tbody></table></div><p class="muted">Цільовий план: '+safeText(shiftPlanNames[document.getElementById('shiftPlanType')?.value]||'')+'. Збереження замінить список виробів лише в цьому вибраному плані; інші три плани не зміняться.</p><button type="button" class="btn" onclick="saveShiftPlanExcelImport()">✓ Зберегти в обраний план</button><button type="button" class="btn secondary" onclick="cancelShiftPlanExcelImport()">Скасувати імпорт</button>';
+   }
+  }catch(e){pendingShiftPlanImport=null;if(status)status.textContent='Помилка читання Excel: '+(e.message||e)}
  }).catch(e=>{if(status)status.textContent='Не вдалося прочитати файл: '+(e.message||e)});
 }
+function saveShiftPlanExcelImport(){
+ if(!shiftPlanIsAdmin()||!pendingShiftPlanImport)return;
+ const d=readShiftPlan(),pending=pendingShiftPlanImport;
+ if(pending.date)d.meta={...(d.meta||{}),date:pending.date};
+ d.rows=pending.rows;d.manualRows=d.manualRows||[];
+ saveShiftPlanData(d);pendingShiftPlanImport=null;
+ const unknown=d.rows.filter(r=>r.notInCatalog).length;
+ const status=document.getElementById('shiftPlanImportStatus');if(status)status.textContent='Збережено '+d.rows.length+' позицій у '+(shiftPlanNames[document.getElementById('shiftPlanType')?.value]||'обраному плані')+'. Не знайдено в каталозі: '+unknown+'.';
+ const preview=document.getElementById('shiftPlanImportPreview');if(preview)preview.innerHTML='';
+ renderShiftPlan();
+ const live=document.getElementById('shiftPlanStatus');if(live)live.textContent='Excel-план збережено локально. '+(unknown?'Частина виробів відсутня в каталозі.':'Усі вироби зіставлено з каталогом, де це можливо.');
+}
+function cancelShiftPlanExcelImport(){pendingShiftPlanImport=null;const preview=document.getElementById('shiftPlanImportPreview'),status=document.getElementById('shiftPlanImportStatus');if(preview)preview.innerHTML='';if(status)status.textContent='Імпорт скасовано. Поточний план не змінено.';}
 function renderShiftPlan(){
  document.body.classList.remove('shift-print-mode');document.getElementById('shiftPrintSheet')?.remove();
  const admin=shiftPlanIsAdmin(),session=currentButdetalSession(),_m=readShiftPlan().meta||{},_loadKey=shiftPlanKey()+'_'+(_m.date||'')+'_'+(_m.shift||'');
@@ -426,10 +468,10 @@ function renderShiftPlan(){
   '<label>Дата<input type="date" value="'+safeText(meta.date||'')+'" onchange="shiftPlanMetaChange(\'date\',this.value)"></label><label>Номер партії<input type="text" maxlength="40" value="'+safeText(meta.shift||'')+'" placeholder="Наприклад, 125" onchange="shiftPlanMetaChange(\'shift\',this.value)"></label><label>Початковий № виробу<input type="number" min="1" step="1" inputmode="numeric" value="'+safeText(meta.startProductNo??'')+'" placeholder="Наприклад, 198" onchange="shiftPlanMetaChange(\'startProductNo\',this.value)"></label><label>Бригадир<select onchange="shiftPlanMetaChange(\'foreman\',this.value)"><option value="">— Не призначено —</option>'+['Баряцький','Чиж','Коренєв','Шерстюк'].map(n=>'<option value="'+n+'" '+(meta.foreman===n?'selected':'')+'>'+n+'</option>').join('')+'</select></label><label>Бригада<input value="'+safeText(meta.brigade||'')+'" placeholder="Назва / номер" onchange="shiftPlanMetaChange(\'brigade\',this.value)"></label>'
   :'<label>Дата<input type="date" value="'+safeText(meta.date||'')+'" onchange="shiftPlanMetaChange(\'date\',this.value)"></label><label>Номер партії<input type="text" maxlength="40" value="'+safeText(meta.shift||'')+'" placeholder="Наприклад, 125" onchange="shiftPlanMetaChange(\'shift\',this.value)"></label><label>Початковий № виробу<input type="number" value="'+safeText(meta.startProductNo??'')+'" disabled></label><label>Закріплена бригада<input value="'+safeText(meta.brigade||'Завантаження…')+'" disabled></label>';
  el.innerHTML=(admin?'<div class="shift-plan-controls"><button class="btn secondary" onclick="renderBrigadeAssignments()">Налаштувати бригади працівників</button><button class="btn secondary" onclick="renderMasterShiftPlans()">План майстра</button></div><div id="brigadeAssignments" class="hidden"></div>':'')+
- (admin?'<div class="card" style="margin:12px 0"><h3>Імпорт плану з Excel для цієї бригади</h3><p class="muted">У першому аркуші файлу: колонка A — назва виробу, колонка B — кількість у штуках. Суфікс « т-а» в кінці назви означає плиту з пробками.</p><input id="shiftPlanImportFile" type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"><button type="button" class="btn secondary" onclick="importShiftPlanExcel()">Імпортувати план цієї бригади</button><p id="shiftPlanImportStatus" class="muted" aria-live="polite"></p><div id="shiftPlanImportUnknown"></div></div>':'')+
+ (admin?'<div class="card" style="margin:12px 0"><h3>Завантаження плану з Excel</h3><p class="muted">Програма читає перший аркуш за заголовками: «Найменування», «План шт», «Факт шт» та «№ замовлення, або контрагент». Перед збереженням покаже всі знайдені позиції. Інші три плани не змінюються.</p><input id="shiftPlanImportFile" type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"><button type="button" class="btn secondary" onclick="previewShiftPlanExcel()">Переглянути Excel перед збереженням</button><p id="shiftPlanImportStatus" class="muted" aria-live="polite"></p><div id="shiftPlanImportPreview"></div></div>':'')+
  (admin&&rows.some(r=>r.notInCatalog)?'<div class="warning"><b>Вироби, яких немає в каталозі:</b><ul>'+rows.filter(r=>r.notInCatalog).map(r=>'<li>'+safeText(r.productLabel)+' — '+safeText(r.qty)+' шт.</li>').join('')+'</ul>Вони збережені в плані, але для автоматичних характеристик їх потрібно додати до каталогу.</div>':'')+
- '<div class="shift-plan-controls">'+metaHtml+'</div><h3>Вироби за планом</h3><div class="shift-plan-editor"><table><thead><tr><th>№ рядка</th><th>Номери виробів</th><th>Виріб</th><th>Розміри</th><th>Бетон</th><th>Армування</th><th>Бетон на 1 шт., м³</th><th>План, шт.</th><th>Факт, шт.</th><th>Залишок, шт.</th><th>Бетон на всі шт., м³</th>'+(admin?'<th></th>':'')+'</tr></thead><tbody>'+
- rows.map((r,i)=>{const p=shiftPlanProductForRow(r,a),vol=Number(p?.volume)||0,qty=Number(r.qty)||0,first=Number(meta.startProductNo)||0,offset=rows.slice(0,i).reduce((n,x)=>n+Math.max(0,Number(x.qty)||0),0),serialStart=first?first+offset:0,serialEnd=serialStart?serialStart+Math.max(0,qty)-1:0,serialLabel=serialStart?(qty>1?serialStart+'–'+serialEnd:String(serialStart)):'—';return '<tr><td>'+(i+1)+'</td><td>'+safeText(serialLabel)+'</td><td>'+(admin?'<select aria-label="Виріб '+(i+1)+'" onchange="selectShiftPlanProduct('+i+',this.value)">'+opts.replace('value="'+safeText(r.productId||'')+'"','value="'+safeText(r.productId||'')+'" selected')+'</select>':safeText(r.productLabel||p?.mark||p?.name||'Виріб'))+'</td><td>'+safeText(p?.dimensions||'')+'</td><td>'+safeText(p?.concreteGrade||'')+'</td><td>'+safeText(p?.rebar||'')+'</td><td>'+vol.toFixed(3)+'</td><td>'+(admin?'<input type="number" min="0" step="1" value="'+safeText(r.qty||'')+'" onchange="updateShiftPlanRow('+i+',\'qty\',this.value)">':qty)+'</td><td>'+(admin?(Number(r.factQty)||0):'<input type="number" min="0" step="1" inputmode="numeric" aria-label="Факт виконання" value="'+safeText(r.factQty??'')+'" onchange="updateShiftPlanRow('+i+',\'factQty\',this.value)">')+'</td><td>'+Math.max(0,qty-(Number(r.factQty)||0))+'</td><td>'+(vol*qty).toFixed(3)+'</td>'+(admin?'<td><button type="button" class="remove-row" onclick="removeShiftPlanRow('+i+')" aria-label="Видалити рядок">×</button></td>':'')+'</tr>'}).join('')+
+ '<div class="shift-plan-controls">'+metaHtml+'</div><h3>Вироби за планом</h3><div class="shift-plan-editor"><table><thead><tr><th>№ рядка</th><th>Номери виробів</th><th>Виріб</th><th>Розміри</th><th>Бетон</th><th>Армування</th><th>Бетон на 1 шт., м³</th><th>Замовлення / контрагент</th><th>План, шт.</th><th>Факт, шт.</th><th>Залишок, шт.</th><th>Бетон на всі шт., м³</th>'+(admin?'<th></th>':'')+'</tr></thead><tbody>'+
+ rows.map((r,i)=>{const p=shiftPlanProductForRow(r,a),vol=Number(p?.volume)||0,qty=Number(r.qty)||0,first=Number(meta.startProductNo)||0,offset=rows.slice(0,i).reduce((n,x)=>n+Math.max(0,Number(x.qty)||0),0),serialStart=first?first+offset:0,serialEnd=serialStart?serialStart+Math.max(0,qty)-1:0,serialLabel=serialStart?(qty>1?serialStart+'–'+serialEnd:String(serialStart)):'—';return '<tr><td>'+(i+1)+'</td><td>'+safeText(serialLabel)+'</td><td>'+(admin?'<select aria-label="Виріб '+(i+1)+'" onchange="selectShiftPlanProduct('+i+',this.value)">'+opts.replace('value="'+safeText(r.productId||'')+'"','value="'+safeText(r.productId||'')+'" selected')+'</select>':safeText(r.productLabel||p?.mark||p?.name||'Виріб'))+'</td><td>'+safeText(p?.dimensions||'')+'</td><td>'+safeText(p?.concreteGrade||'')+'</td><td>'+safeText(p?.rebar||'')+'</td><td>'+vol.toFixed(3)+'</td><td>'+safeText(r.customer||'')+'</td><td>'+(admin?'<input type="number" min="0" step="1" value="'+safeText(r.qty||'')+'" onchange="updateShiftPlanRow('+i+',\'qty\',this.value)">':qty)+'</td><td>'+(admin?(Number(r.factQty)||0):'<input type="number" min="0" step="1" inputmode="numeric" aria-label="Факт виконання" value="'+safeText(r.factQty??'')+'" onchange="updateShiftPlanRow('+i+',\'factQty\',this.value)">')+'</td><td>'+Math.max(0,qty-(Number(r.factQty)||0))+'</td><td>'+(vol*qty).toFixed(3)+'</td>'+(admin?'<td><button type="button" class="remove-row" onclick="removeShiftPlanRow('+i+')" aria-label="Видалити рядок">×</button></td>':'')+'</tr>'}).join('')+
  '</tbody><tfoot><tr><th colspan="'+(admin?10:10)+'" style="text-align:right">Разом бетону</th><th>'+total.toFixed(3)+' м³</th>'+(admin?'<th></th>':'')+'</tr></tfoot></table></div>'+
  (admin?'<button type="button" class="btn secondary" onclick="addShiftPlanRow()">＋ Додати виріб</button><h3 style="margin-top:20px">Додаткові записи плану</h3><div class="shift-plan-editor"><table><thead><tr><th>№</th><th>Найменування</th><th>Марка бетону</th><th>Взято бетону, м³</th><th>Кількість, шт.</th><th></th></tr></thead><tbody>'+manual.map((r,i)=>'<tr><td>'+(i+1)+'</td><td><input value="'+safeText(r.name||'')+'" onchange="updateShiftManualRow('+i+',\'name\',this.value)"></td><td><input value="'+safeText(r.concreteGrade||'')+'" onchange="updateShiftManualRow('+i+',\'concreteGrade\',this.value)"></td><td><input type="number" min="0" step="0.001" value="'+safeText(r.concreteTaken||'')+'" onchange="updateShiftManualRow('+i+',\'concreteTaken\',this.value)"></td><td><input type="number" min="0" step="1" value="'+safeText(r.qty||'')+'" onchange="updateShiftManualRow('+i+',\'qty\',this.value)"></td><td><button type="button" class="remove-row" onclick="removeShiftManualRow('+i+')">×</button></td></tr>').join('')+'</tbody></table></div><button type="button" class="btn secondary" onclick="addShiftManualRow()">＋ Додати ручний рядок</button><button type="button" class="btn" onclick="syncShiftPlanNow()">Опублікувати план бригади</button>':'<p class="muted">План заданий адміністратором. Тут можна змінювати лише фактичне виконання.</p><button type="button" class="btn" onclick="syncShiftPlanNow()">Зберегти факт виконання</button>')+
  '<p class="muted">У каталозі: '+a.length+' виробів. '+(admin?'План доступний для редагування лише адміністратору.':'План лише для перегляду; редагування планових позицій заблоковано.')+'</p>';
